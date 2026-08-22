@@ -23,7 +23,7 @@
 
 ## 機能一覧 / Features
 
-- **3室 PK モデル**（Masui 2022）で Cp（血中）と Ce（効果部位/脳相当）を算出
+- **3コンパートメント PK モデル**（Masui 2022）で Cp（血中）と Ce（効果部位/脳相当）を算出
 - **静的投与（bolus）**：任意の時刻・量を複数回追加可能
 - **持続投与（infusion）**：1 ポンプとして扱い、**ある時点での速度変更を何回でも追加**
   - 各変更 = その時刻から新速度で続行
@@ -70,7 +70,7 @@
 
 ## 数値モデル / Model
 
-### PK（3室）
+### PK（3コンパートメント）
 **Masui K, Stöhr T, Pesic M, et al.** A population pharmacokinetic model of remimazolam for general anesthesia and consideration of remimazolam dose in clinical practice. *J Anesth*. 2022;36:493–505. [DOI:10.1007/s00540-022-03079-y](https://doi.org/10.1007/s00540-022-03079-y)
 
 - 中心室 V1、末梢室 V2 / V3
