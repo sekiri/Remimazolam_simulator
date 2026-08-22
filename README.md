@@ -73,7 +73,7 @@
 ### PK（3コンパートメント）
 **Masui K, Stöhr T, Pesic M, et al.** A population pharmacokinetic model of remimazolam for general anesthesia and consideration of remimazolam dose in clinical practice. *J Anesth*. 2022;36:493–505. [DOI:10.1007/s00540-022-03079-y](https://doi.org/10.1007/s00540-022-03079-y)
 
-- 中心室 V1、末梢室 V2 / V3
+- 中央コンパートメント V1、末梢コンパートメント V2 / V3
 - 体重・年齢・性別・ASA 補正（ABW 基準）
 - 分布係数 Q2 / Q3
 
