@@ -36,7 +36,6 @@
   input,select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;
     font-size:14px;background:#fff;color:var(--ink);font-family:inherit;}
   input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.12);}
-  input.clearable{color:#9aa4b2;} /* 既定値表示中（クリックで消去） */
   .hint{font-size:11px;color:var(--muted);margin-top:3px;}
   .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;
     border:1px solid transparent;border-radius:9px;padding:10px 16px;font-size:14px;font-weight:600;
@@ -84,7 +83,7 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>レミマゾラム PK/PD シミュレーター</h1>
+    <h1>レミマゾラム PK/PD シミュレーター <span style="font-size:11px;font-weight:600;color:var(--muted);background:#f1f5f9;padding:2px 8px;border-radius:6px;vertical-align:middle;">ver 3</span></h1>
     <p class="sub">3コンパートメントモデル + 効果部位（脳代理）モデル / <b>Masui 2022</b> 日本人群 population PK / 研究・教育用</p>
   </header>
 
@@ -99,11 +98,11 @@
       <div class="card">
         <h2>患者情報 <span class="tag">Masui 2022</span></h2>
         <div class="row">
-          <div><label>年齢（歳）</label><input type="number" class="clearable" id="age" value="60" min="18" max="100" step="1"></div>
-          <div><label>身長（cm）</label><input type="number" class="clearable" id="height" value="165" min="120" max="220" step="1"></div>
+          <div><label>年齢（歳）</label><input type="number" id="age" placeholder="60" min="18" max="100" step="1"></div>
+          <div><label>身長（cm）</label><input type="number" id="height" placeholder="165" min="120" max="220" step="1"></div>
         </div>
         <div class="row">
-          <div><label>体重（kg）</label><input type="number" class="clearable" id="weight" value="65" min="30" max="200" step="0.5"></div>
+          <div><label>体重（kg）</label><input type="number" id="weight" placeholder="65" min="30" max="200" step="0.5"></div>
           <div>
             <label>性</label>
             <select id="sex"><option value="0" selected>男性</option><option value="1">女性</option></select>
@@ -125,8 +124,8 @@
 
         <label style="margin-top:14px">持続投与（1ポンプ）</label>
         <div class="row" style="grid-template-columns:1fr 1fr;margin-bottom:8px">
-          <div><label>開始（分）</label><input type="number" class="clearable" id="infStart" value="0" min="0" step="1"></div>
-          <div><label>初期速度（mg/kg/h）</label><input type="number" class="clearable" id="infRate0" value="1.0" min="0" step="0.1"></div>
+          <div><label>開始（分）</label><input type="number" id="infStart" placeholder="0" min="0" step="1"></div>
+          <div><label>初期速度（mg/kg/h）</label><input type="number" id="infRate0" placeholder="1.0" min="0" step="0.1"></div>
         </div>
         <label style="margin-top:8px">速度変更（変更時刻に新速度を設定）</label>
         <div id="infChangeList"></div>
@@ -134,7 +133,7 @@
         <div class="hint">実際の臨床と同様に1つのシリンジポンプで持続投与し、必要に応じてその時点の速度を変更します。各変更は「変更時刻」から新速度で続行。速度 0 を指定するとその時刻で投与終了します。</div>
 
         <div class="row" style="margin-top:12px">
-          <div><label>シミュレーション時間（分）</label><input type="number" class="clearable" id="tEnd" value="120" min="5" max="720" step="5"></div>
+          <div><label>シミュレーション時間（分）</label><input type="number" id="tEnd" placeholder="120" min="5" max="720" step="5"></div>
           <div><label>ke0（効果部位）</label>
             <div class="ke0-opt">
               <select id="ke0src">
@@ -317,22 +316,27 @@ function readProtocol(){
   const boluses=[...document.querySelectorAll('#bolusList .dose-item')].map(d=>({
     t:parseFloat(d.querySelector('.b-t').value)||0,
     mgkg:parseFloat(d.querySelector('.b-mg').value)||0}));
-  const infStart=parseFloat($('infStart').value)||0;
-  const infRate0=parseFloat($('infRate0').value)||0;
+  const infStart=numVal('infStart');
+  const infRate0=numVal('infRate0');
   const infChanges=[...document.querySelectorAll('#infChangeList .dose-item')].map(d=>({
     t:parseFloat(d.querySelector('.c-t').value)||0,
     rate:parseFloat(d.querySelector('.c-r').value)||0})).filter(c=>c.t>0||c.rate>0);
   return {boluses, infStart, infRate0, infChanges};
 }
 function showErr(m){const e=$('errBox');e.style.display=m?'block':'none';e.textContent=m;}
+function numVal(id){
+  const el=$(id),v=parseFloat(el.value);
+  /* 欄が空欄なら既定値（placeholder）で代用 */
+  return isNaN(v)?parseFloat(el.placeholder):v;
+}
 function run(){
   showErr('');
-  const age=parseFloat($('age').value),height=parseFloat($('height').value),
-    tbw=parseFloat($('weight').value),sex=parseInt($('sex').value),asa=parseInt($('asa').value);
+  const age=numVal('age'),height=numVal('height'),
+    tbw=numVal('weight'),sex=parseInt($('sex').value),asa=parseInt($('asa').value);
   if(!(age>=18&&age<=100))return showErr('年齢は 18–100 歳で指定してください。');
   if(!(tbw>=30&&tbw<=200))return showErr('体重は 30–200 kg で指定してください。');
   if(!(height>=120&&height<=220))return showErr('身長は 120–220 cm で指定してください。');
-  const tEnd=parseFloat($('tEnd').value)||120;
+  const tEnd=numVal('tEnd');
   if(!(tEnd>=5))return showErr('シミュレーション時間は 5 分以上で指定してください。');
   const protocol=readProtocol();
   const p=pkParams(age,tbw,height,sex,asa), r=rateConsts(p);
@@ -632,49 +636,10 @@ $('csv').onclick=()=>{
 $('addBolus').onclick=()=>addBolusRow(0,0);
 $('addInfChange').onclick=()=>addInfChangeRow(0,1.0);
 $('calc').onclick=run;
-
-/* ===== 既定値クリック消去 =====
-   .clearable な入力欄は既定値を表示（薄い灰色）。
-   iOS Safari 対応のため「タップ開始」の時点で消す多層構成:
-   1) touchstart / mousedown（タップ・クリックの開始。focus より確実に先）
-   2) focus（desktop / 画面キーボードのフォーカス移動など）
-   3) keydown（最終保険: 未消去の状態で打鍵が来たらここで消す）
-   一度でもユーザーが関与した（touched）欄は二度と消さない。 */
-(function(){
-  const touched=new Set();
-  function clearDefault(el){
-    if(touched.has(el))return;
-    /* 値が既定値のままではない（↑/↓スピナーで変えた等）場合は消さない */
-    if(el.value!==el._defVal)return;
-    touched.add(el);
-    if(el.classList.contains('clearable')){
-      el.value='';
-      el.classList.remove('clearable');
-    }
-  }
-  function arm(el){
-    el._defVal=el.value;
-    el.addEventListener('touchstart',()=>clearDefault(el),{passive:true});
-    el.addEventListener('mousedown',()=>clearDefault(el));
-    el.addEventListener('focus',()=>clearDefault(el));
-    el.addEventListener('keydown',function(e){
-      /* 未関与の欄に打鍵が来たら（focus/touchstart が先に消してなければ）
-         ここで消す。矢印キー・Backspace 等は値に影響しないので安全。 */
-      if(touched.has(el))return;
-      clearDefault(el);
-    });
-  }
-  document.querySelectorAll('input.clearable').forEach(arm);
-  window.__resetTouched=()=>{touched.clear();};
-})();
-
 $('reset').onclick=()=>{
-  $('age').value=60;$('height').value=165;$('weight').value=65;$('sex').value=0;$('asa').value=0;
-  $('tEnd').value=120;$('ke0src').value='masui';
-  document.querySelectorAll('input.clearable').forEach(el=>el.classList.add('clearable'));
-  window.__resetTouched();
+  ['age','height','weight','infStart','infRate0','tEnd'].forEach(id=>{$(id).value='';});
+  $('sex').value=0;$('ke0src').value='masui';
   $('bolusList').innerHTML='';addBolusRow(0,0.6);
-  $('infStart').value=0;$('infRate0').value=1.0;
   $('infChangeList').innerHTML='';
   run();
 };
