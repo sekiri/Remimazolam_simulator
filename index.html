@@ -36,6 +36,7 @@
   input,select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;
     font-size:14px;background:#fff;color:var(--ink);font-family:inherit;}
   input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.12);}
+  input.clearable{color:#9aa4b2;} /* 既定値表示中（クリックで消去） */
   .hint{font-size:11px;color:var(--muted);margin-top:3px;}
   .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;
     border:1px solid transparent;border-radius:9px;padding:10px 16px;font-size:14px;font-weight:600;
@@ -98,11 +99,11 @@
       <div class="card">
         <h2>患者情報 <span class="tag">Masui 2022</span></h2>
         <div class="row">
-          <div><label>年齢（歳）</label><input type="number" id="age" value="60" min="18" max="100" step="1"></div>
-          <div><label>身長（cm）</label><input type="number" id="height" value="165" min="120" max="220" step="1"></div>
+          <div><label>年齢（歳）</label><input type="number" class="clearable" id="age" value="60" min="18" max="100" step="1"></div>
+          <div><label>身長（cm）</label><input type="number" class="clearable" id="height" value="165" min="120" max="220" step="1"></div>
         </div>
         <div class="row">
-          <div><label>体重（kg）</label><input type="number" id="weight" value="65" min="30" max="200" step="0.5"></div>
+          <div><label>体重（kg）</label><input type="number" class="clearable" id="weight" value="65" min="30" max="200" step="0.5"></div>
           <div>
             <label>性</label>
             <select id="sex"><option value="0" selected>男性</option><option value="1">女性</option></select>
@@ -124,8 +125,8 @@
 
         <label style="margin-top:14px">持続投与（1ポンプ）</label>
         <div class="row" style="grid-template-columns:1fr 1fr;margin-bottom:8px">
-          <div><label>開始（分）</label><input type="number" id="infStart" value="0" min="0" step="1"></div>
-          <div><label>初期速度（mg/kg/h）</label><input type="number" id="infRate0" value="1.0" min="0" step="0.1"></div>
+          <div><label>開始（分）</label><input type="number" class="clearable" id="infStart" value="0" min="0" step="1"></div>
+          <div><label>初期速度（mg/kg/h）</label><input type="number" class="clearable" id="infRate0" value="1.0" min="0" step="0.1"></div>
         </div>
         <label style="margin-top:8px">速度変更（変更時刻に新速度を設定）</label>
         <div id="infChangeList"></div>
@@ -133,7 +134,7 @@
         <div class="hint">実際の臨床と同様に1つのシリンジポンプで持続投与し、必要に応じてその時点の速度を変更します。各変更は「変更時刻」から新速度で続行。速度 0 を指定するとその時刻で投与終了します。</div>
 
         <div class="row" style="margin-top:12px">
-          <div><label>シミュレーション時間（分）</label><input type="number" id="tEnd" value="120" min="5" max="720" step="5"></div>
+          <div><label>シミュレーション時間（分）</label><input type="number" class="clearable" id="tEnd" value="120" min="5" max="720" step="5"></div>
           <div><label>ke0（効果部位）</label>
             <div class="ke0-opt">
               <select id="ke0src">
@@ -631,9 +632,39 @@ $('csv').onclick=()=>{
 $('addBolus').onclick=()=>addBolusRow(0,0);
 $('addInfChange').onclick=()=>addInfChangeRow(0,1.0);
 $('calc').onclick=run;
+
+/* ===== 既定値クリック消去 =====
+   .clearable な入力欄は既定値を表示。ユーザーが初めてクリック(フォーカス)すると
+   既定値を消して、そのまま入力できる状態にする。一度でもユーザーが値を変えたり
+   消去済みの欄は、その後のクリックで消さない。 */
+(function(){
+  const touched=new Set();
+  function arm(el){
+    el.addEventListener('focus',()=>{
+      if(touched.has(el))return;
+      touched.add(el);
+      if(el.classList.contains('clearable')){
+        el.value='';
+        el.classList.remove('clearable');
+      }
+    });
+    /* スピナー(↑/↓)で値を変えた時点で既定値ではないとみなす。
+       その後の初回クリックで消去しないようにするためのガード。 */
+    el.addEventListener('input',()=>{
+      if(touched.has(el))return;
+      touched.add(el);
+      el.classList.remove('clearable');
+    });
+  }
+  document.querySelectorAll('input.clearable').forEach(arm);
+  window.__resetTouched=()=>{touched.clear();};
+})();
+
 $('reset').onclick=()=>{
   $('age').value=60;$('height').value=165;$('weight').value=65;$('sex').value=0;$('asa').value=0;
   $('tEnd').value=120;$('ke0src').value='masui';
+  document.querySelectorAll('input.clearable').forEach(el=>el.classList.add('clearable'));
+  window.__resetTouched();
   $('bolusList').innerHTML='';addBolusRow(0,0.6);
   $('infStart').value=0;$('infRate0').value=1.0;
   $('infChangeList').innerHTML='';
