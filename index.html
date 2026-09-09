@@ -634,26 +634,34 @@ $('addInfChange').onclick=()=>addInfChangeRow(0,1.0);
 $('calc').onclick=run;
 
 /* ===== 既定値クリック消去 =====
-   .clearable な入力欄は既定値を表示。ユーザーが初めてクリック(フォーカス)すると
-   既定値を消して、そのまま入力できる状態にする。一度でもユーザーが値を変えたり
-   消去済みの欄は、その後のクリックで消さない。 */
+   .clearable な入力欄は既定値を表示（薄い灰色）。
+   iOS Safari 対応のため「タップ開始」の時点で消す多層構成:
+   1) touchstart / mousedown（タップ・クリックの開始。focus より確実に先）
+   2) focus（desktop / 画面キーボードのフォーカス移動など）
+   3) keydown（最終保険: 未消去の状態で打鍵が来たらここで消す）
+   一度でもユーザーが関与した（touched）欄は二度と消さない。 */
 (function(){
   const touched=new Set();
-  function arm(el){
-    el.addEventListener('focus',()=>{
-      if(touched.has(el))return;
-      touched.add(el);
-      if(el.classList.contains('clearable')){
-        el.value='';
-        el.classList.remove('clearable');
-      }
-    });
-    /* スピナー(↑/↓)で値を変えた時点で既定値ではないとみなす。
-       その後の初回クリックで消去しないようにするためのガード。 */
-    el.addEventListener('input',()=>{
-      if(touched.has(el))return;
-      touched.add(el);
+  function clearDefault(el){
+    if(touched.has(el))return;
+    /* 値が既定値のままではない（↑/↓スピナーで変えた等）場合は消さない */
+    if(el.value!==el._defVal)return;
+    touched.add(el);
+    if(el.classList.contains('clearable')){
+      el.value='';
       el.classList.remove('clearable');
+    }
+  }
+  function arm(el){
+    el._defVal=el.value;
+    el.addEventListener('touchstart',()=>clearDefault(el),{passive:true});
+    el.addEventListener('mousedown',()=>clearDefault(el));
+    el.addEventListener('focus',()=>clearDefault(el));
+    el.addEventListener('keydown',function(e){
+      /* 未関与の欄に打鍵が来たら（focus/touchstart が先に消してなければ）
+         ここで消す。矢印キー・Backspace 等は値に影響しないので安全。 */
+      if(touched.has(el))return;
+      clearDefault(el);
     });
   }
   document.querySelectorAll('input.clearable').forEach(arm);
