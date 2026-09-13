@@ -63,6 +63,13 @@
   th:first-child,td:first-child{text-align:left;}
   thead th{background:#f8fafc;color:var(--muted);font-weight:600;font-size:11.5px;}
   td .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:middle;}
+  .card-collapsible .card-h{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;}
+  .card-collapsible .card-h .chev{margin-left:auto;font-size:12px;color:var(--muted);
+    background:#f1f5f9;border:1px solid var(--line);border-radius:6px;padding:2px 8px;transition:.15s;}
+  .card-collapsible .card-h:hover .chev{background:#e8edf5;color:var(--ink);}
+  .card-collapsible .card-body{margin-top:0;}
+  .card-collapsible.collapsed .card-body{display:none;}
+  .card-collapsible.collapsed .card-h{margin-bottom:0;}
   canvas{width:100%;display:block;border-radius:8px;background:#fff;touch-action:none;}
   .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:12px;}
   .legend span{display:inline-flex;align-items:center;gap:6px;}
@@ -181,17 +188,32 @@
         </div>
       </div>
 
-      <div class="card" id="moaaCard" style="display:none">
-        <h2>鎮静深度の予測（MOAA/S）</h2>
+      <div class="card card-collapsible collapsed" id="moaaCard" style="display:none">
+        <h2 class="card-h">鎮静深度の予測（MOAA/S）<span class="chev">開く ▾</span></h2>
+        <div class="card-body">
         <div class="muted" style="font-size:12px;margin-bottom:8px">
           Ce50：MOAA/S ≤4 / ≤3 / ≤2 / ≤1 = 0.302 / 0.397 / 0.483 / 0.654 µg/mL（Chon 2024）
         </div>
+        <div class="row" style="align-items:end;margin-bottom:10px">
+          <div style="flex:0 0 170px"><label>表示時刻（分）</label><input type="number" id="moaaT" min="0" step="1" placeholder="0"></div>
+          <button class="btn btn-ghost btn-sm" id="moaaPrev" type="button">◀ 1分前</button>
+          <button class="btn btn-ghost btn-sm" id="moaaNext" type="button">1分後 ▶</button>
+        </div>
         <table id="moaaTable"><thead></thead><tbody></tbody></table>
+        </div>
       </div>
 
-      <div class="card" id="tableCard" style="display:none">
-        <h2>時系列データ <button class="btn btn-ghost btn-sm" id="csv" type="button" style="margin-left:auto">CSV出力</button></h2>
+      <div class="card card-collapsible collapsed" id="tableCard" style="display:none">
+        <h2 class="card-h">時系列データ <button class="btn btn-ghost btn-sm" id="csv" type="button">CSV出力</button><span class="chev">開く ▾</span></h2>
+        <div class="card-body">
+        <div class="row" style="align-items:end;margin-bottom:8px">
+          <div style="flex:0 0 150px"><label>表示行数（行/ページ）</label><select id="pageSize"><option>10</option><option selected>20</option><option>50</option><option>100</option></select></div>
+          <button class="btn btn-ghost btn-sm" id="pgPrev" type="button">◀ 前へ</button>
+          <button class="btn btn-ghost btn-sm" id="pgNext" type="button">次へ ▶</button>
+          <span class="muted" id="pgInfo" style="font-size:12px;padding-bottom:8px"></span>
+        </div>
         <table id="dataTable"><thead><tr><th>時間(分)</th><th>Cp 血中 (µg/mL)</th><th>Ce 脳相当 (µg/mL)</th><th>予測MOAA/S</th></tr></thead><tbody></tbody></table>
+        </div>
       </div>
 
       <div class="card">
@@ -295,6 +317,9 @@ function predictMoaa(ce){
 /* ================= UI ================= */
 const $=id=>document.getElementById(id);
 let lastSeries=null;
+let lastTEnd=0;          /* 直前シミュレーション時間（分） */
+let moaaT=0;             /* 鎮静深度表の表示時刻（分） */
+let dataPage=0;          /* 時系列データ表示ページ（0始まり） */
 let yBase='ce'; /* Y軸自動調整の基準: 'ce'=Ceのみ / 'all'=Cp+Ce */
 function addBolusRow(t=0,mgkg=0.6){
   const div=document.createElement('div');div.className='dose-item';
@@ -345,6 +370,9 @@ function run(){
   if(!(ke0>0))return showErr('ke0 の計算に失敗しました。');
   const series=simulate(p,r,ke0,tbw,protocol,tEnd);
   lastSeries=series.map(s=>({...s,moaa:predictMoaa(s.ce)}));
+  lastTEnd=tEnd;
+  moaaT=Math.min(moaaT,tEnd); /* 前回選択時刻が今回のシミュ時間を超えていれば末端に揃える */
+  dataPage=0;
   /* PK stats */
   const ch=contextHalfLife(r);
   $('abwBadge').textContent='ABW '+p.abw.toFixed(1)+' kg';
@@ -354,24 +382,42 @@ function run(){
   $('pkStats').innerHTML=stats.map(([k,v,u])=>
     `<div class="stat"><div class="k">${k}</div><div class="v">${v.toFixed(v>=100?0:v>=10?1:3)}</div><div class="u">${u}</div></div>`).join('');
   $('pkCard').style.display='block';
-  /* table */
-  $('dataTable').querySelector('tbody').innerHTML=lastSeries.map(s=>
-    `<tr><td>${s.t.toFixed(0)}</td><td>${s.cp.toFixed(3)}</td><td>${s.ce.toFixed(3)}</td><td>${s.moaa}</td></tr>`).join('');
-  $('tableCard').style.display='block';
-  /* MOAA table (probabilities at selected times) */
-  const picks=[0,5,10,15,20,30,45,60,90,120].filter(t=>t<=tEnd);
-  $('moaaTable').querySelector('thead').innerHTML=
-    '<tr><th>時間(分)</th><th>Ce</th><th>P≤1</th><th>P≤2</th><th>P≤3</th><th>P≤4</th><th>予測</th></tr>';
-  $('moaaTable').querySelector('tbody').innerHTML=picks.map(tt=>{
-    const row=lastSeries.reduce((a,b)=>Math.abs(b.t-tt)<Math.abs(a.t-tt)?b:a);
-    const pct=x=>(100*x).toFixed(0)+'%';
-    return `<tr><td>${row.t.toFixed(0)}</td><td>${row.ce.toFixed(3)}</td>
-      <td>${pct(pLeq(row.ce,1))}</td><td>${pct(pLeq(row.ce,2))}</td>
-      <td>${pct(pLeq(row.ce,3))}</td><td>${pct(pLeq(row.ce,4))}</td>
-      <td><b>${row.moaa}</b></td></tr>`;}).join('');
+  /* tables (時系列データ / 鎮静深度: 折りたたみ、必要時に開く) */
+  renderDataTable();
+  renderMoaaTable();
   $('moaaCard').style.display='block';
   $('chartCard').style.display='block';
   requestAnimationFrame(()=>drawChart());
+}
+/* ---- 時系列データ（ページング表示） ---- */
+function renderDataTable(){
+  if(!lastSeries)return;
+  const pageSize=parseInt($('pageSize').value,10)||20;
+  const total=lastSeries.length;
+  const pages=Math.max(1,Math.ceil(total/pageSize));
+  dataPage=Math.max(0,Math.min(dataPage,pages-1));
+  const from=dataPage*pageSize;
+  $('dataTable').querySelector('tbody').innerHTML=lastSeries.slice(from,from+pageSize).map(s=>
+    `<tr><td>${s.t.toFixed(0)}</td><td>${s.cp.toFixed(3)}</td><td>${s.ce.toFixed(3)}</td><td>${s.moaa}</td></tr>`).join('');
+  $('pgInfo').textContent=`${from+1}–${Math.min(total,from+pageSize)} 行 ／ 全 ${total} 行（${dataPage+1}/${pages} ページ）`;
+  $('tableCard').style.display='block';
+}
+/* ---- 鎮静深度（選択時刻の Ce / 確率 / 予測スコア） ---- */
+function renderMoaaTable(){
+  if(!lastSeries)return;
+  moaaT=Math.max(0,Math.min(moaaT,lastTEnd));
+  $('moaaT').value=Math.round(moaaT);
+  $('moaaT').max=Math.round(lastTEnd);
+  const row=lastSeries.reduce((a,b)=>Math.abs(b.t-moaaT)<Math.abs(a.t-moaaT)?b:a);
+  const pct=x=>(100*x).toFixed(0)+'%';
+  $('moaaTable').querySelector('thead').innerHTML=
+    '<tr><th>時間(分)</th><th>Ce</th><th>P≤1</th><th>P≤2</th><th>P≤3</th><th>P≤4</th><th>予測</th></tr>';
+  $('moaaTable').querySelector('tbody').innerHTML=
+    `<tr><td>${row.t.toFixed(0)}</td><td>${row.ce.toFixed(3)}</td>
+      <td>${pct(pLeq(row.ce,1))}</td><td>${pct(pLeq(row.ce,2))}</td>
+      <td>${pct(pLeq(row.ce,3))}</td><td>${pct(pLeq(row.ce,4))}</td>
+      <td><b>${row.moaa}</b></td></tr>`;
+  $('moaaCard').style.display='block';
 }
 /* ================= custom canvas chart (zoom/pan) ================= */
 const view={t0:0,t1:0,c0:0,c1:0};
@@ -633,6 +679,27 @@ $('csv').onclick=()=>{
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
   a.download='remimazolam_simulation.csv';a.click();URL.revokeObjectURL(a.href);
 };
+/* ================= 折りたたみ（時系列データ / 鎮静深度） ================= */
+document.querySelectorAll('.card-collapsible .card-h').forEach(h=>{
+  h.addEventListener('click',e=>{
+    if(e.target.closest('button'))return; /* CSV出力などの内蔵ボタンは除外 */
+    const card=h.closest('.card-collapsible');
+    card.classList.toggle('collapsed');
+    h.querySelector('.chev').textContent=card.classList.contains('collapsed')?'開く ▾':'閉じる ▴';
+  });
+});
+/* ---- 鎮静深度: 時刻選択 ---- */
+$('moaaT').oninput=()=>{
+  const v=parseFloat($('moaaT').value);
+  if(!isNaN(v))moaaT=Math.max(0,Math.min(v,lastTEnd));
+  renderMoaaTable();
+};
+$('moaaPrev').onclick=()=>{moaaT=Math.max(0,moaaT-1);renderMoaaTable();};
+$('moaaNext').onclick=()=>{moaaT=Math.min(lastTEnd,moaaT+1);renderMoaaTable();};
+/* ---- 時系列データ: ページング ---- */
+$('pageSize').onchange=()=>{dataPage=0;renderDataTable();};
+$('pgPrev').onclick=()=>{dataPage--;renderDataTable();};
+$('pgNext').onclick=()=>{dataPage++;renderDataTable();};
 $('addBolus').onclick=()=>addBolusRow(0,0);
 $('addInfChange').onclick=()=>addInfChangeRow(0,1.0);
 $('calc').onclick=run;
