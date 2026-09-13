@@ -440,7 +440,7 @@ function setupChart(){
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
   const tFull=Math.max(...lastSeries.map(s=>s.t));
   const cFull=Math.max(0.5,...lastSeries.map(s=>Math.max(s.cp,s.ce)))*1.15;
-  let dragging=false, dragX0=0, dragT0=0, moved=0;
+  let dragging=false, moved=0, dragX=-1;
 
   function render(){
     ctx.setTransform(dpr,0,0,dpr,0,0);
@@ -562,20 +562,22 @@ function setupChart(){
     }
     render();
   };
-  /* ---- drag pan ---- */
+  /* ---- drag pan（増分方式：境界で止まるとそこから固定される） ---- */
   cv.onmousedown=e=>{
     dragging=true;moved=0;
-    const r=cv.getBoundingClientRect();dragX0=e.clientX-r.left;dragT0=view.t0;
+    const r=cv.getBoundingClientRect();dragX=e.clientX-r.left;
     cv.style.cursor='grabbing';
   };
   const mmHandler=e=>{
     if(!dragging)return;
     const r=cv.getBoundingClientRect(), mx=e.clientX-r.left;
-    moved=Math.max(moved,Math.abs(mx-dragX0));
-    const dt=(mx-dragX0)/pw*(view.t1-view.t0);
+    moved+=Math.abs(mx-dragX);
+    const dt=(mx-dragX)/pw*(view.t1-view.t0);
+    dragX=mx;
     const tFull2=Math.max(...lastSeries.map(s=>s.t));
-    view.t0=clamp(dragT0-dt,0,Math.max(0,tFull2-(view.t1-view.t0)));
-    view.t1=view.t0+(view.t1-view.t0);
+    const span=view.t1-view.t0;
+    view.t0=clamp(view.t0-dt,0,Math.max(0,tFull2-span));
+    view.t1=view.t0+span;
     render();
   };
   const muHandler=e=>{
@@ -603,10 +605,12 @@ function setupChart(){
     const r=cv.getBoundingClientRect();
     if(touches.mode==='pan'&&e.touches.length===1){
       const dx=e.touches[0].clientX-touches.x0;
+      touches.x0=e.touches[0].clientX;
       const dt=dx/pw*(touches.t1-touches.t0);
       const tFull2=Math.max(...lastSeries.map(s=>s.t));
-      view.t0=clamp(touches.t0-dt,0,Math.max(0,tFull2-(touches.t1-touches.t0)));
-      view.t1=view.t0+(touches.t1-touches.t0);
+      const span=touches.t1-touches.t0;
+      view.t0=clamp(view.t0-dt,0,Math.max(0,tFull2-span));
+      view.t1=view.t0+span;
       render();
     }else if(touches.mode==='pinch'&&e.touches.length>=2){
       const d1=tDist(e.touches);
@@ -629,11 +633,12 @@ function setupChart(){
   const touchEnd=()=>{touches=null;};
   cv.addEventListener('touchend',touchEnd);
   cv.addEventListener('touchcancel',touchEnd);
-  /* ---- buttons: X=free zoom, Y=0-anchored (top-only, auto-fit) ---- */
+  /* ---- buttons: X=free zoom（中心基準）, Y=0-anchored (top-only, auto-fit) ---- */
   const zoomAt=(axis,factor)=>{
     const tFull2=Math.max(...lastSeries.map(s=>s.t));
-    if(axis==='x'){const span=(view.t1-view.t0)*factor;if(span<0.5||span>tFull2-1e-6)return;
-      const mid=(view.t0+view.t1)/2;view.t0=clamp(mid-span/2,0,tFull2-span);view.t1=view.t0+span;}
+    if(axis==='x'){const span=(view.t1-view.t0)*factor;if(span<0.5)return;
+      if(span>=tFull2-1e-6){view.t0=0;view.t1=tFull2;} /* 全表示に到達したらスナップ */
+      else{const mid=(view.t0+view.t1)/2;view.t0=clamp(mid-span/2,0,tFull2-span);view.t1=view.t0+span;}}
     else{
       setY1(view.c1*factor);
       fitY();
