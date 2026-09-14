@@ -49,10 +49,11 @@
   .btn-danger:hover{background:#fef2f2;}
   .actions{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;}
   /* dose event list */
-  .dose-item{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;margin-bottom:8px;
+  .dose-item{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:start;margin-bottom:8px;
     background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:8px;}
   .dose-item label{margin:0 0 3px;}
   .dose-item .hint{margin:2px 0 0 0;}
+  .dose-item .row-del{margin-top:24px;} /* ラベル行(22px)+2px で input(32px) と中央揃え（✕は28px） */
   .numgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
   .stat{background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:8px 10px;}
   .stat .k{font-size:11px;color:var(--muted);}
@@ -323,16 +324,19 @@ let moaaT=0;             /* 鎮静深度表の表示時刻（分） */
 let dataPage=0;          /* 時系列データ表示ページ（0始まり） */
 let yBase='ce'; /* Y軸自動調整の基準: 'ce'=Ceのみ / 'all'=Cp+Ce */
 function curTbw(){const w=parseFloat($('weight').value);return(w>0)?w:65;}
-/* 投与量・速度は mg / mg/h で入力。体重から mg/kg / mg/kg/h を参考表示 */
+/* 投与量・速度は mg / mg/h で入力。体重から mg/kg / mg/kg/h を参考表示
+   （欄が空欄ならプレースホルダー値＝シミュレーションの代用値で表示） */
 function updatePerKgHint(input,hintEl,unit){
   const w=curTbw();
-  if(hintEl)hintEl.textContent=(unit==='d')?('≒ '+(input.value/w).toFixed(2)+' mg/kg'):('≒ '+(input.value/w).toFixed(2)+' mg/kg/h');
+  const v=parseFloat(input.value);
+  const dose=(input.value!=='' && !isNaN(v))?v:parseFloat(input.placeholder)||0;
+  if(hintEl)hintEl.textContent=(unit==='d')?('≒ '+(dose/w).toFixed(2)+' mg/kg'):('≒ '+(dose/w).toFixed(2)+' mg/kg/h');
 }
 function addBolusRow(t=0,mg=''){
   const div=document.createElement('div');div.className='dose-item';
   div.innerHTML=`<div><label>時間（分）</label><input type="number" class="b-t" value="${t}" min="0" step="1"></div>
     <div><label>投与量（mg）</label><input type="number" class="b-mg" value="${mg}" min="0" max="200" step="1"><div class="hint b-mgkg"></div></div>
-    <button class="btn btn-danger btn-sm" type="button">✕</button>`;
+    <button class="btn btn-danger btn-sm row-del" type="button" title="この行を削除" aria-label="この行を削除">✕</button>`;
   const mi=div.querySelector('.b-mg');
   const upd=()=>updatePerKgHint(mi,div.querySelector('.b-mgkg'),'d');
   mi.oninput=upd;mi.onchange=upd;upd();
@@ -343,7 +347,7 @@ function addInfChangeRow(t=0,rate=''){
   const div=document.createElement('div');div.className='dose-item';
   div.innerHTML=`<div><label>変更時刻（分）</label><input type="number" class="c-t" value="${t}" min="0" step="1"></div>
     <div><label>新速度（mg/h）<span class="muted" style="font-weight:400">0=終了</span></label><input type="number" class="c-r" value="${rate}" min="0" step="1"><div class="hint c-rgkg"></div></div>
-    <button class="btn btn-danger btn-sm" type="button">✕</button>`;
+    <button class="btn btn-danger btn-sm row-del" type="button" title="この行を削除" aria-label="この行を削除">✕</button>`;
   const ri=div.querySelector('.c-r');
   const upd=()=>updatePerKgHint(ri,div.querySelector('.c-rgkg'),'h');
   ri.oninput=upd;ri.onchange=upd;upd();
