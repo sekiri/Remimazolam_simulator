@@ -52,6 +52,7 @@
   .dose-item{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;margin-bottom:8px;
     background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:8px;}
   .dose-item label{margin:0 0 3px;}
+  .dose-item .hint{margin:2px 0 0 0;}
   .numgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
   .stat{background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:8px 10px;}
   .stat .k{font-size:11px;color:var(--muted);}
@@ -132,7 +133,7 @@
         <label style="margin-top:14px">持続投与（1ポンプ）</label>
         <div class="row" style="grid-template-columns:1fr 1fr;margin-bottom:8px">
           <div><label>開始（分）</label><input type="number" id="infStart" placeholder="0" min="0" step="1"></div>
-          <div><label>初期速度（mg/kg/h）</label><input type="number" id="infRate0" placeholder="1.0" min="0" step="0.1"></div>
+          <div><label>初期速度（mg/h）</label><input type="number" id="infRate0" placeholder="65" min="0" step="1"><div class="hint" id="infRate0Hint"></div></div>
         </div>
         <label style="margin-top:8px">速度変更（変更時刻に新速度を設定）</label>
         <div id="infChangeList"></div>
@@ -276,7 +277,7 @@ function contextHalfLife(r){
 function simulate(p,r,ke0,tbw,protocol,tEnd){
   const dt=0.05, n=Math.max(1,Math.round(tEnd/dt));
   const rec=Math.max(1,Math.round(1.0/dt));
-  const boluses=protocol.boluses.filter(b=>b.mgkg>0).map(b=>({...b})).sort((a,b)=>a.t-b.t);
+  const boluses=protocol.boluses.filter(b=>b.mg>0).map(b=>({...b})).sort((a,b)=>a.t-b.t);
   let a1=0,a2=0,a3=0,ce=0,bi=0;
   const series=[];
   /* 持続投与: 開始時刻・初期速度 + 速度変更イベント（時刻順に適用。速度0=投与終了） */
@@ -288,14 +289,14 @@ function simulate(p,r,ke0,tbw,protocol,tEnd){
       if(c.t<=t)rate=c.rate;   /* 変更時刻が来たらその速度（0なら終了） */
       else break;
     }
-    return rate*tbw/60;
+    return rate;
   };
   const f=(a1,a2,a3,ce,rt)=>{const cp=a1/p.V1;return[
     rt-(r.k10+r.k12+r.k13)*a1+r.k21*a2+r.k31*a3,
     r.k12*a1-r.k21*a2, r.k13*a1-r.k31*a3, ke0*(cp-ce)];};
   for(let i=0;i<n;i++){
     const t=i*dt;
-    while(bi<boluses.length&&boluses[bi].t<=t+dt+1e-9){a1+=boluses[bi].mgkg*tbw;bi++;}
+    while(bi<boluses.length&&boluses[bi].t<=t+dt+1e-9){a1+=boluses[bi].mg;bi++;}
     if(i%rec===0)series.push({t,cp:a1/p.V1,ce});
     const rt=rateAt(t+0.5*dt);
     const k1=f(a1,a2,a3,ce,rt),k2=f(a1+.5*dt*k1[0],a2+.5*dt*k1[1],a3+.5*dt*k1[2],ce+.5*dt*k1[3],rt),
@@ -321,26 +322,45 @@ let lastTEnd=0;          /* 直前シミュレーション時間（分） */
 let moaaT=0;             /* 鎮静深度表の表示時刻（分） */
 let dataPage=0;          /* 時系列データ表示ページ（0始まり） */
 let yBase='ce'; /* Y軸自動調整の基準: 'ce'=Ceのみ / 'all'=Cp+Ce */
-function addBolusRow(t=0,mgkg=0.6){
+function curTbw(){const w=parseFloat($('weight').value);return(w>0)?w:65;}
+/* 投与量・速度は mg / mg/h で入力。体重から mg/kg / mg/kg/h を参考表示 */
+function updatePerKgHint(input,hintEl,unit){
+  const w=curTbw();
+  if(hintEl)hintEl.textContent=(unit==='d')?('≒ '+(input.value/w).toFixed(2)+' mg/kg'):('≒ '+(input.value/w).toFixed(2)+' mg/kg/h');
+}
+function addBolusRow(t=0,mg=''){
   const div=document.createElement('div');div.className='dose-item';
   div.innerHTML=`<div><label>時間（分）</label><input type="number" class="b-t" value="${t}" min="0" step="1"></div>
-    <div><label>投与量（mg/kg）</label><input type="number" class="b-mg" value="${mgkg}" min="0" max="5" step="0.1"></div>
+    <div><label>投与量（mg）</label><input type="number" class="b-mg" value="${mg}" min="0" max="200" step="1"><div class="hint b-mgkg"></div></div>
     <button class="btn btn-danger btn-sm" type="button">✕</button>`;
-  div.querySelector('button').onclick=()=>{if(document.querySelectorAll('#bolusList .dose-item').length>1)div.remove();};
+  const mi=div.querySelector('.b-mg');
+  const upd=()=>updatePerKgHint(mi,div.querySelector('.b-mgkg'),'d');
+  mi.oninput=upd;mi.onchange=upd;upd();
+  div.querySelector('button').onclick=()=>{if(document.querySelectorAll('#bolusList .dose-item').length>1){div.remove();updateAllHints();}};
   $('bolusList').appendChild(div);
 }
-function addInfChangeRow(t=0,rate=1.0){
+function addInfChangeRow(t=0,rate=''){
   const div=document.createElement('div');div.className='dose-item';
   div.innerHTML=`<div><label>変更時刻（分）</label><input type="number" class="c-t" value="${t}" min="0" step="1"></div>
-    <div><label>新速度（mg/kg/h）<span class="muted" style="font-weight:400">0=終了</span></label><input type="number" class="c-r" value="${rate}" min="0" step="0.1"></div>
+    <div><label>新速度（mg/h）<span class="muted" style="font-weight:400">0=終了</span></label><input type="number" class="c-r" value="${rate}" min="0" step="1"><div class="hint c-rgkg"></div></div>
     <button class="btn btn-danger btn-sm" type="button">✕</button>`;
-  div.querySelector('button').onclick=()=>div.remove();
+  const ri=div.querySelector('.c-r');
+  const upd=()=>updatePerKgHint(ri,div.querySelector('.c-rgkg'),'h');
+  ri.oninput=upd;ri.onchange=upd;upd();
+  div.querySelector('button').onclick=()=>{div.remove();updateAllHints();};
   $('infChangeList').appendChild(div);
+}
+function updateAllHints(){
+  document.querySelectorAll('#bolusList .dose-item').forEach(d=>{
+    const mi=d.querySelector('.b-mg');updatePerKgHint(mi,d.querySelector('.b-mgkg'),'d');});
+  document.querySelectorAll('#infChangeList .dose-item').forEach(d=>{
+    const ri=d.querySelector('.c-r');updatePerKgHint(ri,d.querySelector('.c-rgkg'),'h');});
+  updatePerKgHint($('infRate0'),$('infRate0Hint'),'h');
 }
 function readProtocol(){
   const boluses=[...document.querySelectorAll('#bolusList .dose-item')].map(d=>({
     t:parseFloat(d.querySelector('.b-t').value)||0,
-    mgkg:parseFloat(d.querySelector('.b-mg').value)||0}));
+    mg:parseFloat(d.querySelector('.b-mg').value)||0}));
   const infStart=numVal('infStart');
   const infRate0=numVal('infRate0');
   const infChanges=[...document.querySelectorAll('#infChangeList .dose-item')].map(d=>({
@@ -705,18 +725,22 @@ $('moaaNext').onclick=()=>{moaaT=Math.min(lastTEnd,moaaT+1);renderMoaaTable();};
 $('pageSize').onchange=()=>{dataPage=0;renderDataTable();};
 $('pgPrev').onclick=()=>{dataPage--;renderDataTable();};
 $('pgNext').onclick=()=>{dataPage++;renderDataTable();};
-$('addBolus').onclick=()=>addBolusRow(0,0);
-$('addInfChange').onclick=()=>addInfChangeRow(0,1.0);
+$('addBolus').onclick=()=>addBolusRow(0);
+$('addInfChange').onclick=()=>addInfChangeRow(0);
 $('calc').onclick=run;
+$('weight').onchange=updateAllHints;
+$('infRate0').oninput=()=>updatePerKgHint($('infRate0'),$('infRate0Hint'),'h');
+$('infRate0').onchange=()=>updatePerKgHint($('infRate0'),$('infRate0Hint'),'h');
 $('reset').onclick=()=>{
   ['age','height','weight','infStart','infRate0','tEnd'].forEach(id=>{$(id).value='';});
   $('sex').value=0;$('ke0src').value='masui';
-  $('bolusList').innerHTML='';addBolusRow(0,0.6);
+  $('bolusList').innerHTML='';addBolusRow(0);
   $('infChangeList').innerHTML='';
   run();
 };
 window.addEventListener('resize',()=>{if(lastSeries)drawChart();});
-addBolusRow(0,0.6);
+addBolusRow(0);
+updateAllHints();
 run();
 </script>
 </body>
