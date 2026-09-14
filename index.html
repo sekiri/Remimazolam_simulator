@@ -127,11 +127,11 @@
       <div class="card">
         <h2>投与プロトコル <span class="tag">PK/PDシミュレーション</span></h2>
 
-        <label>投与イベント（静注）</label>
+        <label>投与イベント（静注）<span class="muted" style="font-weight:400;font-size:11px">　※承認外（グレー）使用 — 行はすべて削除可</span></label>
         <div id="bolusList"></div>
         <button class="btn btn-ghost btn-sm" id="addBolus" type="button">＋ 静注を追加</button>
 
-        <label style="margin-top:14px">持続投与（1ポンプ）</label>
+        <label style="margin-top:14px">持続投与（1ポンプ）<span class="muted" style="font-weight:400;font-size:11px">　※承認用法 — 開始/初期速度は固定</span></label>
         <div class="row" style="grid-template-columns:1fr 1fr;margin-bottom:8px">
           <div><label>開始（分）</label><input type="number" id="infStart" placeholder="0" min="0" step="1"></div>
           <div><label>初期速度（mg/h）</label><input type="number" id="infRate0" placeholder="65" min="0" step="1"><div class="hint" id="infRate0Hint"></div></div>
@@ -290,7 +290,7 @@ function simulate(p,r,ke0,tbw,protocol,tEnd){
       if(c.t<=t)rate=c.rate;   /* 変更時刻が来たらその速度（0なら終了） */
       else break;
     }
-    return rate;
+    return rate/60; /* mg/h → mg/min（積分器のdtは分単位） */
   };
   const f=(a1,a2,a3,ce,rt)=>{const cp=a1/p.V1;return[
     rt-(r.k10+r.k12+r.k13)*a1+r.k21*a2+r.k31*a3,
@@ -334,13 +334,14 @@ function updatePerKgHint(input,hintEl,unit){
 }
 function addBolusRow(t=0,mg=''){
   const div=document.createElement('div');div.className='dose-item';
-  div.innerHTML=`<div><label>時間（分）</label><input type="number" class="b-t" value="${t}" min="0" step="1"></div>
+  div.innerHTML=`<div><label>時間（分）</label><input type="number" class="b-t" placeholder="${t}" min="0" step="1"></div>
     <div><label>投与量（mg）</label><input type="number" class="b-mg" value="${mg}" min="0" max="200" step="1"><div class="hint b-mgkg"></div></div>
     <button class="btn btn-danger btn-sm row-del" type="button" title="この行を削除" aria-label="この行を削除">✕</button>`;
   const mi=div.querySelector('.b-mg');
   const upd=()=>updatePerKgHint(mi,div.querySelector('.b-mgkg'),'d');
   mi.oninput=upd;mi.onchange=upd;upd();
-  div.querySelector('button').onclick=()=>{if(document.querySelectorAll('#bolusList .dose-item').length>1){div.remove();updateAllHints();}};
+  /* 静注は添付文書承認外のため行をすべて削除可能（0回でも可） */
+  div.querySelector('button').onclick=()=>{div.remove();updateAllHints();};
   $('bolusList').appendChild(div);
 }
 function addInfChangeRow(t=0,rate=''){
