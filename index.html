@@ -196,11 +196,13 @@
         <div class="muted" style="font-size:12px;margin-bottom:8px">
           Ce50：MOAA/S ≤4 / ≤3 / ≤2 / ≤1 = 0.302 / 0.397 / 0.483 / 0.654 µg/mL（Chon 2024）
         </div>
-        <div class="row" style="align-items:end;margin-bottom:10px">
-          <div style="flex:0 0 170px"><label>表示時刻（分）</label><input type="number" id="moaaT" min="0" step="1" placeholder="0"></div>
-          <button class="btn btn-ghost btn-sm" id="moaaPrev" type="button">◀ 1分前</button>
-          <button class="btn btn-ghost btn-sm" id="moaaNext" type="button">1分後 ▶</button>
+        <div class="row" style="align-items:end;margin-bottom:6px">
+          <div style="flex:0 0 120px"><label>開始時刻（分）</label><input type="number" id="moaaFrom" min="0" step="1" placeholder="0"></div>
+          <div style="flex:0 0 120px"><label>終了時刻（分）</label><input type="number" id="moaaTo" min="0" step="1" placeholder="0"></div>
+          <button class="btn btn-ghost btn-sm" id="moaaPrev" type="button">◀ 1分前（区間移動）</button>
+          <button class="btn btn-ghost btn-sm" id="moaaNext" type="button">1分後（区間移動）▶</button>
         </div>
+        <div class="hint" style="margin-bottom:8px">開始〜終了時刻の区間内を1分刻みで一覧表示（1分前/1分後は区間全体を1分ずらす）。</div>
         <table id="moaaTable"><thead></thead><tbody></tbody></table>
         </div>
       </div>
@@ -320,7 +322,7 @@ function predictMoaa(ce){
 const $=id=>document.getElementById(id);
 let lastSeries=null;
 let lastTEnd=0;          /* 直前シミュレーション時間（分） */
-let moaaT=0;             /* 鎮静深度表の表示時刻（分） */
+let moaaFrom=0, moaaTo=0; /* 鎮静深度表の表示区間（分） */
 let dataPage=0;          /* 時系列データ表示ページ（0始まり） */
 let yBase='ce'; /* Y軸自動調整の基準: 'ce'=Ceのみ / 'all'=Cp+Ce */
 function curTbw(){const w=parseFloat($('weight').value);return(w>0)?w:65;}
@@ -396,7 +398,12 @@ function run(){
   const series=simulate(p,r,ke0,tbw,protocol,tEnd);
   lastSeries=series.map(s=>({...s,moaa:predictMoaa(s.ce)}));
   lastTEnd=tEnd;
-  moaaT=Math.min(moaaT,tEnd); /* 前回選択時刻が今回のシミュ時間を超えていれば末端に揃える */
+  /* 鎮静深度表の表示区間: 前回区間が今回のシミュ時間を超えていれば末端に揃える */
+  if(moaaTo>0){
+    if(moaaFrom<0)moaaFrom=0;
+    if(moaaTo>lastTEnd){moaaFrom=Math.max(0,lastTEnd-(moaaTo-moaaFrom));moaaTo=lastTEnd;}
+    if(moaaFrom>moaaTo){moaaFrom=Math.max(0,moaaTo-1);moaaTo=moaaFrom+1;}
+  }
   dataPage=0;
   /* PK stats */
   const ch=contextHalfLife(r);
@@ -427,21 +434,31 @@ function renderDataTable(){
   $('pgInfo').textContent=`${from+1}–${Math.min(total,from+pageSize)} 行 ／ 全 ${total} 行（${dataPage+1}/${pages} ページ）`;
   $('tableCard').style.display='block';
 }
-/* ---- 鎮静深度（選択時刻の Ce / 確率 / 予測スコア） ---- */
+/* ---- 鎮静深度（区間内の Ce / 確率 / 予測スコア、1分刻み一覧） ---- */
+const MOAA_MAX_ROWS=300; /* 一度に表示する行数の上限（DOM負荷防止） */
 function renderMoaaTable(){
   if(!lastSeries)return;
-  moaaT=Math.max(0,Math.min(moaaT,lastTEnd));
-  $('moaaT').value=Math.round(moaaT);
-  $('moaaT').max=Math.round(lastTEnd);
-  const row=lastSeries.reduce((a,b)=>Math.abs(b.t-moaaT)<Math.abs(a.t-moaaT)?b:a);
+  /* 既定区間（初回）: 0〜min(30, シミュ時間) */
+  if(moaaTo<=moaaFrom){moaaFrom=0;moaaTo=Math.min(30,lastTEnd);}
+  moaaFrom=Math.max(0,Math.min(Math.round(moaaFrom),lastTEnd));
+  moaaTo=Math.max(moaaFrom,Math.min(Math.round(moaaTo),lastTEnd));
+  if(moaaTo-moaaFrom+1>MOAA_MAX_ROWS)moaaTo=moaaFrom+MOAA_MAX_ROWS-1;
+  $('moaaFrom').value=moaaFrom;
+  $('moaaTo').value=moaaTo;
+  $('moaaFrom').max=$('moaaTo').max=Math.round(lastTEnd);
+  const nRows=lastSeries.length;
   const pct=x=>(100*x).toFixed(0)+'%';
-  $('moaaTable').querySelector('thead').innerHTML=
-    '<tr><th>時間(分)</th><th>Ce</th><th>P≤1</th><th>P≤2</th><th>P≤3</th><th>P≤4</th><th>予測</th></tr>';
-  $('moaaTable').querySelector('tbody').innerHTML=
-    `<tr><td>${row.t.toFixed(0)}</td><td>${row.ce.toFixed(3)}</td>
+  const rows=[];
+  for(let t=moaaFrom;t<=moaaTo;t++){
+    const row=lastSeries[Math.min(t,nRows-1)];
+    rows.push(`<tr><td>${row.t.toFixed(0)}</td><td>${row.ce.toFixed(3)}</td>
       <td>${pct(pLeq(row.ce,1))}</td><td>${pct(pLeq(row.ce,2))}</td>
       <td>${pct(pLeq(row.ce,3))}</td><td>${pct(pLeq(row.ce,4))}</td>
-      <td><b>${row.moaa}</b></td></tr>`;
+      <td><b>${row.moaa}</b></td></tr>`);
+  }
+  $('moaaTable').querySelector('thead').innerHTML=
+    '<tr><th>時間(分)</th><th>Ce</th><th>P≤1</th><th>P≤2</th><th>P≤3</th><th>P≤4</th><th>予測</th></tr>';
+  $('moaaTable').querySelector('tbody').innerHTML=rows.join('');
   $('moaaCard').style.display='block';
 }
 /* ================= custom canvas chart (zoom/pan) ================= */
@@ -718,14 +735,23 @@ document.querySelectorAll('.card-collapsible .card-h').forEach(h=>{
     h.querySelector('.chev').textContent=card.classList.contains('collapsed')?'開く ▾':'閉じる ▴';
   });
 });
-/* ---- 鎮静深度: 時刻選択 ---- */
-$('moaaT').oninput=()=>{
-  const v=parseFloat($('moaaT').value);
-  if(!isNaN(v))moaaT=Math.max(0,Math.min(v,lastTEnd));
+/* ---- 鎮静深度: 区間選択（開始/終了時刻を入力して範囲表示） ---- */
+function moaaShift(d){
+  const span=moaaTo-moaaFrom;
+  moaaFrom=Math.max(0,Math.min(lastTEnd-span,moaaFrom+d));
+  moaaTo=moaaFrom+span;
   renderMoaaTable();
+}
+$('moaaFrom').oninput=()=>{
+  const v=parseFloat($('moaaFrom').value);
+  if(!isNaN(v)){moaaFrom=Math.max(0,Math.min(Math.round(v),moaaTo));renderMoaaTable();}
 };
-$('moaaPrev').onclick=()=>{moaaT=Math.max(0,moaaT-1);renderMoaaTable();};
-$('moaaNext').onclick=()=>{moaaT=Math.min(lastTEnd,moaaT+1);renderMoaaTable();};
+$('moaaTo').oninput=()=>{
+  const v=parseFloat($('moaaTo').value);
+  if(!isNaN(v)){moaaTo=Math.max(moaaFrom,Math.min(Math.round(v),lastTEnd));renderMoaaTable();}
+};
+$('moaaPrev').onclick=()=>moaaShift(-1);
+$('moaaNext').onclick=()=>moaaShift(1);
 /* ---- 時系列データ: ページング ---- */
 $('pageSize').onchange=()=>{dataPage=0;renderDataTable();};
 $('pgPrev').onclick=()=>{dataPage--;renderDataTable();};
