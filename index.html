@@ -199,10 +199,8 @@
         <div class="row" style="align-items:end;margin-bottom:6px">
           <div style="flex:0 0 120px"><label>開始時刻（分）</label><input type="number" id="moaaFrom" min="0" step="1" placeholder="0"></div>
           <div style="flex:0 0 120px"><label>間隔（分ごと）</label><input type="number" id="moaaStep" min="1" step="1" placeholder="1"></div>
-          <button class="btn btn-ghost btn-sm" id="moaaPrev" type="button">◀ 1分前（開始時刻）</button>
-          <button class="btn btn-ghost btn-sm" id="moaaNext" type="button">1分後（開始時刻）▶</button>
         </div>
-        <div class="hint" style="margin-bottom:8px">開始時刻から入力間隔ごとに30行表示（例: 間隔5 = 5分ごと）。1分前/1分後は開始時刻をずらす。</div>
+        <div class="hint" style="margin-bottom:8px">開始時刻から入力間隔ごとに30行表示（例: 間隔5 = 5分ごと）。開始時刻欄の上下矢印で1分刻み移動（長押しで連続）。</div>
         <table id="moaaTable"><thead></thead><tbody></tbody></table>
         </div>
       </div>
@@ -742,8 +740,6 @@ $('moaaStep').oninput=()=>{
   const v=parseFloat($('moaaStep').value);
   if(!isNaN(v)&&v>=1){moaaStep=Math.round(v);renderMoaaTable();}
 };
-$('moaaPrev').onclick=()=>{moaaFrom=Math.max(0,moaaFrom-1);renderMoaaTable();};
-$('moaaNext').onclick=()=>{moaaFrom=Math.min(lastTEnd,moaaFrom+1);renderMoaaTable();};
 /* ---- 時系列データ: ページング ---- */
 $('pageSize').onchange=()=>{dataPage=0;renderDataTable();};
 $('pgPrev').onclick=()=>{dataPage--;renderDataTable();};
