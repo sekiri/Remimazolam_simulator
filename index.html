@@ -390,6 +390,7 @@ function run(){
   if(!(height>=120&&height<=220))return showErr('身長は 120–220 cm で指定してください。');
   const tEnd=numVal('tEnd');
   if(!(tEnd>=5))return showErr('シミュレーション時間は 5 分以上で指定してください。');
+  if(tEnd>720)return showErr('シミュレーション時間は 720分（12時間）以下で指定してください。');
   const protocol=readProtocol();
   const p=pkParams(age,tbw,height,sex,asa), r=rateConsts(p);
   let ke0;
