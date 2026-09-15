@@ -199,8 +199,9 @@
         <div class="row" style="align-items:end;margin-bottom:6px">
           <div style="flex:0 0 120px"><label>開始時刻（分）</label><input type="number" id="moaaFrom" min="0" step="1" placeholder="0"></div>
           <div style="flex:0 0 120px"><label>間隔（分ごと）</label><input type="number" id="moaaStep" min="1" step="1" placeholder="1"></div>
+          <div style="flex:0 0 140px"><label>表示行数（行）</label><select id="moaaRows"><option>10</option><option>20</option><option selected>30</option><option>50</option><option>100</option></select></div>
         </div>
-        <div class="hint" style="margin-bottom:8px">開始時刻から入力間隔ごとに30行表示（例: 間隔5 = 5分ごと）。開始時刻欄の上下矢印で1分刻み移動（長押しで連続）。</div>
+        <div class="hint" style="margin-bottom:8px">開始時刻から入力間隔ごとに指定行数表示（例: 間隔5 = 5分ごと）。開始時刻欄の上下矢印で1分刻み移動（長押しで連続）。時系列データ表と同じ操作です。</div>
         <table id="moaaTable"><thead></thead><tbody></tbody></table>
         </div>
       </div>
@@ -209,10 +210,9 @@
         <h2 class="card-h">時系列データ <button class="btn btn-ghost btn-sm" id="csv" type="button">CSV出力</button><span class="chev">開く ▾</span></h2>
         <div class="card-body">
         <div class="row" style="align-items:end;margin-bottom:8px">
-          <div style="flex:0 0 150px"><label>表示行数（行/ページ）</label><select id="pageSize"><option>10</option><option selected>20</option><option>50</option><option>100</option></select></div>
-          <button class="btn btn-ghost btn-sm" id="pgPrev" type="button">◀ 前へ</button>
-          <button class="btn btn-ghost btn-sm" id="pgNext" type="button">次へ ▶</button>
-          <span class="muted" id="pgInfo" style="font-size:12px;padding-bottom:8px"></span>
+          <div style="flex:0 0 120px"><label>開始時刻（分）</label><input type="number" id="dataFrom" min="0" step="1" placeholder="0"></div>
+          <div style="flex:0 0 120px"><label>間隔（分ごと）</label><input type="number" id="dataStep" min="1" step="1" placeholder="1"></div>
+          <div style="flex:0 0 140px"><label>表示行数（行）</label><select id="dataRows"><option>10</option><option>20</option><option selected>30</option><option>50</option><option>100</option></select></div>
         </div>
         <table id="dataTable"><thead><tr><th>時間(分)</th><th>Cp 血中 (µg/mL)</th><th>Ce 脳相当 (µg/mL)</th><th>予測MOAA/S</th></tr></thead><tbody></tbody></table>
         </div>
@@ -321,7 +321,7 @@ const $=id=>document.getElementById(id);
 let lastSeries=null;
 let lastTEnd=0;          /* 直前シミュレーション時間（分） */
 let moaaFrom=0, moaaStep=1; /* 鎮静深度表の表示開始時刻（分）と間隔（分ごと） */
-let dataPage=0;          /* 時系列データ表示ページ（0始まり） */
+let dataFrom=0, dataStep=1; /* 時系列データ表の表示開始時刻（分）と間隔（分ごと） */
 let yBase='ce'; /* Y軸自動調整の基準: 'ce'=Ceのみ / 'all'=Cp+Ce */
 function curTbw(){const w=parseFloat($('weight').value);return(w>0)?w:65;}
 /* 投与量・速度は mg / mg/h で入力。体重から mg/kg / mg/kg/h を参考表示
@@ -397,9 +397,9 @@ function run(){
   const series=simulate(p,r,ke0,tbw,protocol,tEnd);
   lastSeries=series.map(s=>({...s,moaa:predictMoaa(s.ce)}));
   lastTEnd=tEnd;
-  /* 鎮静深度表: 前回開始時刻が今回のシミュ時間を超えていれば末端に揃える */
+  /* 開始時刻が今回のシミュ時間を超えていれば末端に揃える（両表共通） */
   if(moaaFrom>lastTEnd)moaaFrom=lastTEnd;
-  dataPage=0;
+  if(dataFrom>lastTEnd)dataFrom=lastTEnd;
   /* PK stats */
   const ch=contextHalfLife(r);
   $('abwBadge').textContent='ABW '+p.abw.toFixed(1)+' kg';
@@ -416,43 +416,52 @@ function run(){
   $('chartCard').style.display='block';
   requestAnimationFrame(()=>drawChart());
 }
-/* ---- 時系列データ（ページング表示） ---- */
+/* ---- 時系列データ（開始時刻から入力間隔ごとに指定行数表示） ---- */
 function renderDataTable(){
   if(!lastSeries)return;
-  const pageSize=parseInt($('pageSize').value,10)||20;
-  const total=lastSeries.length;
-  const pages=Math.max(1,Math.ceil(total/pageSize));
-  dataPage=Math.max(0,Math.min(dataPage,pages-1));
-  const from=dataPage*pageSize;
-  $('dataTable').querySelector('tbody').innerHTML=lastSeries.slice(from,from+pageSize).map(s=>
-    `<tr><td>${s.t.toFixed(0)}</td><td>${s.cp.toFixed(3)}</td><td>${s.ce.toFixed(3)}</td><td>${s.moaa}</td></tr>`).join('');
-  $('pgInfo').textContent=`${from+1}–${Math.min(total,from+pageSize)} 行 ／ 全 ${total} 行（${dataPage+1}/${pages} ページ）`;
+  dataFrom=Math.max(0,Math.min(Math.round(dataFrom),lastTEnd));
+  dataStep=Math.max(1,Math.round(dataStep||1));
+  const rows=parseInt($('dataRows').value,10)||30;
+  $('dataFrom').value=dataFrom;
+  $('dataStep').value=dataStep;
+  $('dataFrom').max=Math.round(lastTEnd);
+  const nRows=lastSeries.length;
+  const times=[];
+  for(let k=0;k<rows;k++){
+    const t=dataFrom+k*dataStep;
+    if(t>lastTEnd)break;
+    times.push(Math.min(t,nRows-1));
+  }
+  $('dataTable').querySelector('tbody').innerHTML=times.map(i=>{
+    const s=lastSeries[i];
+    return `<tr><td>${s.t.toFixed(0)}</td><td>${s.cp.toFixed(3)}</td><td>${s.ce.toFixed(3)}</td><td>${s.moaa}</td></tr>`;
+  }).join('');
   $('tableCard').style.display='block';
 }
-/* ---- 鎮静深度（開始時刻から入力間隔ごとに30行表示） ---- */
-const MOAA_ROWS=30; /* 一度に表示する行数（固定30） */
+/* ---- 鎮静深度（開始時刻から入力間隔ごとに指定行数表示） ---- */
 function renderMoaaTable(){
   if(!lastSeries)return;
   moaaFrom=Math.max(0,Math.min(Math.round(moaaFrom),lastTEnd));
   moaaStep=Math.max(1,Math.round(moaaStep||1));
+  const rows=parseInt($('moaaRows').value,10)||30;
   $('moaaFrom').value=moaaFrom;
   $('moaaStep').value=moaaStep;
   $('moaaFrom').max=Math.round(lastTEnd);
   const nRows=lastSeries.length;
   const pct=x=>(100*x).toFixed(0)+'%';
-  const rows=[];
-  for(let k=0;k<MOAA_ROWS;k++){
+  const rowsArr=[];
+  for(let k=0;k<rows;k++){
     const t=moaaFrom+k*moaaStep;
     if(t>lastTEnd)break;
     const row=lastSeries[Math.min(t,nRows-1)];
-    rows.push(`<tr><td>${row.t.toFixed(0)}</td><td>${row.ce.toFixed(3)}</td>
+    rowsArr.push(`<tr><td>${row.t.toFixed(0)}</td><td>${row.ce.toFixed(3)}</td>
       <td>${pct(pLeq(row.ce,1))}</td><td>${pct(pLeq(row.ce,2))}</td>
       <td>${pct(pLeq(row.ce,3))}</td><td>${pct(pLeq(row.ce,4))}</td>
       <td><b>${row.moaa}</b></td></tr>`);
   }
   $('moaaTable').querySelector('thead').innerHTML=
     '<tr><th>時間(分)</th><th>Ce</th><th>P≤1</th><th>P≤2</th><th>P≤3</th><th>P≤4</th><th>予測</th></tr>';
-  $('moaaTable').querySelector('tbody').innerHTML=rows.join('');
+  $('moaaTable').querySelector('tbody').innerHTML=rowsArr.join('');
   $('moaaCard').style.display='block';
 }
 /* ================= custom canvas chart (zoom/pan) ================= */
@@ -740,10 +749,17 @@ $('moaaStep').oninput=()=>{
   const v=parseFloat($('moaaStep').value);
   if(!isNaN(v)&&v>=1){moaaStep=Math.round(v);renderMoaaTable();}
 };
-/* ---- 時系列データ: ページング ---- */
-$('pageSize').onchange=()=>{dataPage=0;renderDataTable();};
-$('pgPrev').onclick=()=>{dataPage--;renderDataTable();};
-$('pgNext').onclick=()=>{dataPage++;renderDataTable();};
+$('moaaRows').onchange=()=>renderMoaaTable();
+/* ---- 時系列データ: 開始時刻・間隔・行数 ---- */
+$('dataFrom').oninput=()=>{
+  const v=parseFloat($('dataFrom').value);
+  if(!isNaN(v)){dataFrom=Math.max(0,Math.min(Math.round(v),lastTEnd));renderDataTable();}
+};
+$('dataStep').oninput=()=>{
+  const v=parseFloat($('dataStep').value);
+  if(!isNaN(v)&&v>=1){dataStep=Math.round(v);renderDataTable();}
+};
+$('dataRows').onchange=()=>renderDataTable();
 $('addBolus').onclick=()=>addBolusRow(0);
 $('addInfChange').onclick=()=>addInfChangeRow(0);
 $('calc').onclick=run;
