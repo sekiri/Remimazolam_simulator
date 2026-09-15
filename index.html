@@ -585,6 +585,7 @@ function setupChart(){
     if(need>view.c1)view.c1=Math.min(cFull,need);
   };
   const setY1=v=>{view.c0=0;view.c1=Math.min(cFull,Math.max(v,visMaxC()*1.02));};
+  const MIN_XSPAN=4.5; /* 時間軸の最小表示幅: niceStep(span,6)≥1 を保証（目盛りは最大4.5〜6分幅で1分間隔） */
   /* ---- wheel: 濃度軸ズーム（0固定） / Shift+wheel: 時間軸ズーム（カーソル中心） ---- */
   cv.onwheel=e=>{
     e.preventDefault();
@@ -593,7 +594,7 @@ function setupChart(){
     if(e.shiftKey){
       const tc=clamp(view.t0+(mx-padL)/pw*(view.t1-view.t0),0,tFull);
       const tSpan=(view.t1-view.t0)*factor;
-      if(tSpan<0.5)return;
+      if(tSpan<MIN_XSPAN)return;
       if(tSpan>=tFull-1e-6){view.t0=0;view.t1=tFull;}
       else{
         view.t0=clamp(tc-(tc-view.t0)*factor,0,Math.max(0,tFull-tSpan));
@@ -660,6 +661,7 @@ function setupChart(){
       const mx=touches.midX-r.left;
       const tc=clamp(touches.t0+(mx-padL)/pw*(touches.t1-touches.t0),0,tFull);
       const tSpan=(touches.t1-touches.t0)*scale, cSpan=(touches.c1-touches.c0)*scale;
+      if(tSpan<MIN_XSPAN&&tSpan<tFull-1e-6)return; /* 時間軸は目盛り1分間隔の最小幅以上 */
       if(tSpan>=tFull-1e-6&&cSpan>=cFull-1e-6){view.t0=0;view.t1=tFull;view.c0=0;view.c1=cFull;}
       else{
         view.t0=clamp(tc-(tc-touches.t0)*scale,0,Math.max(0,tFull-tSpan));
@@ -678,7 +680,7 @@ function setupChart(){
   /* ---- buttons: X=free zoom（中心基準）, Y=0-anchored (top-only, auto-fit) ---- */
   const zoomAt=(axis,factor)=>{
     const tFull2=Math.max(...lastSeries.map(s=>s.t));
-    if(axis==='x'){const span=(view.t1-view.t0)*factor;if(span<0.5)return;
+    if(axis==='x'){const span=(view.t1-view.t0)*factor;if(span<MIN_XSPAN)return;
       if(span>=tFull2-1e-6){view.t0=0;view.t1=tFull2;} /* 全表示に到達したらスナップ */
       else{const mid=(view.t0+view.t1)/2;view.t0=clamp(mid-span/2,0,tFull2-span);view.t1=view.t0+span;}}
     else{
