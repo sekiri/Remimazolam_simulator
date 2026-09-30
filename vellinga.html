@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>レミマゾラム + レミフェンタニル 併用モデル（Vellinga 2025）</title>
+<style>
+  :root{
+    --bg:#f5f7fa; --card:#ffffff; --ink:#1f2933; --muted:#6b7280;
+    --line:#e5e9f0; --accent:#2563eb; --accent2:#0d9488;
+    --warn:#fef3c7; --warn-ink:#92400e; --warn-line:#fcd34d;
+    --cp:#2563eb; --ce:#0d9488; --rif:#e11d48; --meta:#7c3aed; --moaa:#f59e0b; --bis:#64748b;
+    --radius:12px; --shadow:0 1px 3px rgba(16,24,40,.08),0 1px 2px rgba(16,24,40,.04);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Noto Sans JP","Yu Gothic UI",Meiryo,sans-serif;
+    line-height:1.55;font-size:14px;}
+  .wrap{max-width:1180px;margin:0 auto;padding:20px 16px 60px;}
+  header h1{font-size:20px;margin:0 0 4px;font-weight:700;}
+  header .sub{color:var(--muted);font-size:13px;margin:0 0 14px;}
+  .nav{margin-bottom:14px;font-size:12.5px;}
+  .nav a{color:var(--accent);text-decoration:none;font-weight:600;}
+  .disclaimer{background:var(--warn);border:1px solid var(--warn-line);color:var(--warn-ink);
+    border-radius:10px;padding:10px 14px;font-size:12.5px;margin-bottom:18px;}
+  .disclaimer b{font-weight:700;}
+  .grid{display:grid;grid-template-columns:380px 1fr;gap:18px;align-items:start;}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:16px 16px 18px;margin-bottom:16px;}
+  .card h2{font-size:14px;margin:0 0 12px;font-weight:700;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .card h2 .tag{font-size:11px;font-weight:600;color:var(--accent);background:#eff4ff;padding:2px 8px;border-radius:20px;}
+  label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px;font-weight:600;}
+  .row{display:flex;gap:10px;}
+  .row>div{flex:1}
+  input,select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;
+    font-size:14px;background:#fff;color:var(--ink);font-family:inherit;}
+  input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.12);}
+  .hint{font-size:11px;color:var(--muted);margin-top:3px;}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;
+    border:1px solid transparent;border-radius:9px;padding:10px 16px;font-size:14px;font-weight:600;
+    font-family:inherit;transition:.15s;}
+  .btn-primary{background:var(--accent);color:#fff;}
+  .btn-primary:hover{background:#1d4ed8;}
+  .btn-ghost{background:#fff;border-color:var(--line);color:var(--ink);}
+  .btn-ghost:hover{background:#f8fafc;}
+  .actions{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;}
+  .numgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+  .stat{background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:8px 10px;}
+  .stat .k{font-size:11px;color:var(--muted);}
+  .stat .v{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;}
+  .stat .u{font-size:11px;color:var(--muted);}
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px;}
+  canvas{width:100%;display:block;border-radius:8px;background:#fff;touch-action:none;}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:12px;}
+  .legend span{display:inline-flex;align-items:center;gap:6px;}
+  .legend i{width:14px;height:3px;border-radius:2px;display:inline-block;}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums;}
+  th,td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--line);}
+  th:first-child,td:first-child{text-align:left;}
+  thead th{background:#f8fafc;color:var(--muted);font-weight:600;font-size:11.5px;}
+  .badge{font-size:11px;padding:2px 8px;border-radius:20px;background:#eff4ff;color:var(--accent);font-weight:600;}
+  .error{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:8px;
+    padding:8px 12px;font-size:12.5px;margin-bottom:12px;display:none;}
+  .muted{color:var(--muted);}
+  .footer-src{font-size:11.5px;color:var(--muted);line-height:1.7;}
+  .footer-src b{color:var(--ink);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>レミマゾラム + レミフェンタニル 併用モデル
+      <span style="font-size:11px;font-weight:600;color:var(--muted);background:#f1f5f9;padding:2px 8px;border-radius:6px;vertical-align:middle;">Vellinga 2025 補遺 D790/D791</span>
+    </h1>
+    <p class="sub">remimazolam + remifentanil の相互作用（代謝物 CNS7054 への競合抑制 = 急性耐性）/ TCI方式 / 研究・教育用</p>
+  </header>
+
+  <div class="nav">
+    <a href="index.html">← 旧タブへ戻る（Masui 2022 単独モデル）</a>
+  </div>
+
+  <div class="disclaimer">
+    ⚠️ <b>本ツールは研究・教育・学習目的のシミュレーションであり、臨床での投与判断・指導に使用するものではありません。</b>
+    実際の投与は添付文書・ガイドライン・主治医の判断に従ってください。
+  </div>
+
+  <div class="grid">
+    <!-- LEFT: inputs -->
+    <div>
+      <div class="card">
+        <h2>患者情報 <span class="tag">Vellinga 2025</span></h2>
+        <div class="row">
+          <div><label>年齢（歳）</label><input type="number" id="age" placeholder="50" min="18" max="100" step="1" value="50"></div>
+          <div><label>身長（cm）</label><input type="number" id="height" placeholder="170" min="120" max="220" step="1" value="170"></div>
+        </div>
+        <div class="row">
+          <div><label>体重（kg）</label><input type="number" id="weight" placeholder="70" min="30" max="200" step="0.5" value="70"></div>
+          <div><label>性</label>
+            <select id="sex"><option value="1" selected>男性</option><option value="2">女性</option></select>
+          </div>
+        </div>
+        <div class="hint">remifentanil の PK は Eleveld 2017 の3コンパートメント allometric 式（補遺 D790 の固定値）。remimazolam / 代謝物 CNS7054 は補遺 D790 の refit 固定値（70kg基準）。</div>
+      </div>
+
+      <div class="card">
+        <h2>レミマゾラム TCI <span class="tag">target µg/mL</span></h2>
+        <div class="row">
+          <div><label>ターゲット Cp（µg/mL）</label><input type="number" id="rmaTarget" placeholder="1" min="0" step="0.1" value="1"></div>
+          <div><label>開始（分）</label><input type="number" id="rmaStart" placeholder="0" min="0" step="1" value="0"></div>
+        </div>
+        <div class="row">
+          <div><label>負荷量（mg）</label><input type="number" id="rmaLoad" placeholder="0" min="0" step="0.1" value="0"><div class="hint">0 = 負荷なし（TCIのみ）</div></div>
+          <div><label>終了（分）</label><input type="number" id="rmaStop" placeholder="0" min="0" step="1" value="0"><div class="hint">0 = 最後まで投与</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>レミフェンタニル TCI <span class="tag">target ng/mL</span></h2>
+        <div class="row">
+          <div><label>ターゲット Cp（ng/mL）</label><input type="number" id="rifTarget" placeholder="10" min="0" step="1" value="10"></div>
+          <div><label>開始（分）</label><input type="number" id="rifStart" placeholder="0" min="0" step="1" value="0"></div>
+        </div>
+        <div class="row">
+          <div><label>負荷量（µg）</label><input type="number" id="rifLoad" placeholder="0" min="0" step="0.5" value="0"><div class="hint">0 = 負荷なし（TCIのみ）</div></div>
+          <div><label>終了（分）</label><input type="number" id="rifStop" placeholder="0" min="0" step="1" value="0"><div class="hint">0 = 最後まで投与</div></div>
+        </div>
+        <div class="hint">TCI 方式：投与速度 = ターゲット × CL（remifentanil の個人CL）。試験と同様にターゲット血中濃度を指定。</div>
+      </div>
+
+      <div class="card">
+        <h2>シミュレーション設定 <span class="tag">PK/PD</span></h2>
+        <label>シミュレーション時間（分）</label>
+        <input type="number" id="tEnd" placeholder="120" min="5" max="720" step="5" value="120">
+        <div class="actions">
+          <button class="btn btn-primary" id="calc" type="button">▶ シミュレーション実行</button>
+          <button class="btn btn-ghost" id="reset" type="button">初期化</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: results -->
+    <div>
+      <div class="error" id="errBox"></div>
+
+      <div class="card" id="pkCard" style="display:none">
+        <h2>計算された PK パラメータ <span class="badge" id="pkBadge"></span></h2>
+        <div class="stats-grid" id="pkStats"></div>
+      </div>
+
+      <div class="card" id="chartCard" style="display:none">
+        <h2>血中濃度と鎮静深度
+          <span class="muted" style="font-weight:400;font-size:11px">左軸:濃度（µg/mL / ng/mL）｜右軸:MOAA/S・BIS</span>
+        </h2>
+        <canvas id="chart" height="340"></canvas>
+        <div class="legend">
+          <span><i style="background:var(--cp)"></i>レミマゾラム Cp (µg/mL)</span>
+          <span><i style="background:var(--meta)"></i>代謝物 CNS7054 Cm (µg/mL)</span>
+          <span><i style="background:var(--rif)"></i>レミフェンタニル Cr (ng/mL)</span>
+          <span><i style="background:var(--moaa);border-top:2px dashed;background:none;width:14px"></i>MOAA/S (0–6, 右軸)</span>
+          <span><i style="background:var(--bis)"></i>BIS (0–100, 右軸)</span>
+        </div>
+      </div>
+
+      <div class="card" id="tableCard" style="display:none">
+        <h2>時刻別数値</h2>
+        <table id="dataTable">
+          <thead><tr><th>時間(分)</th><th>レミマゾラム Cp(µg/mL)</th><th>代謝物 Cm(µg/mL)</th><th>レミフェンタニル Cr(ng/mL)</th><th>INH(%)</th><th>MOAA/S</th><th>BIS</th></tr></thead>
+          <tbody id="dataRows"></tbody>
+        </table>
+        <div class="actions">
+          <button class="btn btn-ghost btn-sm" id="csv" type="button">CSV出力</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>モデル出典 <span class="tag">参考文献</span></h2>
+        <div class="footer-src">
+          <p><b>remimazolam PK</b>: Vellinga et al., Anesthesiology 2025 補遺 D790 の refit 固定値（70kg基準 3コンパートメント, V1=5.31 / V2=12.81 / V3=40.04 L, CL=1.15, Q2=0.91, Q3=0.29 L/min, 代謝分率 FM=0.80）。</p>
+          <p><b>代謝物 CNS7054</b>: 見かけの CL=0.05 L/min, V5≈7.8 L, ktr≈0.30。</p>
+          <p><b>レミフェンタニル PK</b>: Eleveld et al., Anesthesiology 2017 の3コンパートメント allometric モデル（補遺 D790 の固定 THETA）。</p>
+          <p><b>相互作用</b>: remifentanil が代謝物の分解を競合的に抑制（IC50=8.0 ng/mL, Hill=0.6）→ 代謝物蓄積（急性耐性）。</p>
+          <p><b>PD</b>: MOAA/S と BIS を補遺 D791 の refit 値で予測（remimazolam + 代謝物 + remifentanil の相加）。旧 dose-finding 論文の EC50B=35.79 / EC50M=43.03 は参考のみ（本モデルは 3期間横断 refit 値 EC50B≈180 / EC50M≈5.3 を採用）。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+// ===================== Constants (Vellinga 2025 supplements) =====================
+// Remimazolam PK (fixed, 70 kg reference)
+const RMA = { V1:5.31, V2:12.81, V3:40.04, CL:1.15, Q2:0.91, Q3:0.29, FM:0.8 };
+const META = { CLM:0.05, V5:7.8, KTR:0.30 };
+const INH_P = { IC50:8.0, GAM:0.6 };
+const MW_RATIO = 425.3/439.3; // CNS7054 vs remimazolam molecular-weight scaling
+// PD (D791 refit) — exact NONMEM $THETA mapping
+const PD = {
+  // MOAAS ordinal model
+  BASE0:2.1, BASE1:0.5, BASE2:-0.1, BASE3:-0.4, BASE4:0.6,
+  EMAXM: Math.exp(2.4), EC50M: 5.3, EC50MM: 8.0, GAMMAM: Math.exp(0.5), EC50MR: Math.exp(-0.3),
+  // BIS model
+  BASEB: Math.exp(4.54), EMAXB: Math.exp(1.2), EC50B: Math.exp(5.2),
+  EC50MB: Math.exp(9.0), EC50RB: Math.exp(2.08)
+};
+// Remifentanil Eleveld 2017 THETA (fixed)
+const T = [null,1.759110,2.177170,1.614450,9.462570e-1,5.403150e-1,-2.083880,
+  2.878980,-5.544810e-3,-3.269850e-3,-3.151350e-2,4.704050e-1,-2.604960e-2];
+
+function rifParams(age,height,weight,sex){ // sex: 1=male, 2=female
+  const SE50=Math.exp(T[7]);
+  const KMAT=weight**2/(weight**2+SE50**2)/(70.**2/(70.**2+SE50**2));
+  const HT2=(height/100)**2;
+  const MATM=0.88+((1-0.88)/(1+(age/13.4)**(-12.7)));
+  const MATF=1.11+((1-1.11)/(1+(age/7.1)**(-1.1)));
+  const FFMM=MATM*42.92*HT2*weight/(30.93*HT2+weight);
+  const FFMF=MATF*37.99*HT2*weight/(35.98*HT2+weight);
+  const FFMR=42.92*1.7*1.7*70/(30.93*1.7*1.7+70);
+  const BSIZ=((2-sex)*FFMM+(sex-1)*FFMF)/FFMR;
+  const KV1=Math.exp(T[8]*(age-35)),KV2=Math.exp(T[9]*(age-35)),KV3=Math.exp(T[10]*(age-35));
+  const KCL=KV2,KQ2=KV1,KQ3=KV1;
+  const PPUB=age**6/(age**6+12**6),ELDY=age**6/(age**6+45**6);
+  const KSEX=1+(sex-1)*PPUB*(1-ELDY)*T[11];
+  const WV3=Math.exp(T[12]*(weight-70));
+  const V1R=Math.exp(T[1])*BSIZ*KV1;
+  const V2R=Math.exp(T[2])*BSIZ*KV2*KSEX;
+  const V3R=Math.exp(T[3])*BSIZ*KV3*WV3;
+  const M4=BSIZ**0.75*KCL*KSEX*KMAT;
+  const M5=(V2R/Math.exp(T[2]))**0.75*KQ2*KSEX;
+  const M6=(V3R/Math.exp(T[3]))**0.75*KQ3;
+  return { V1R, V2R, V3R, CL:Math.exp(T[4])*M4, Q2:Math.exp(T[5])*M5, Q3:Math.exp(T[6])*M6 };
+}
+
+function num(id, d){ const el=document.getElementById(id); const v=parseFloat(el.value); return (isFinite(v)?v:d); }
+
+// ===================== Simulation =====================
+function simulate(){
+  const age=num("age",50), height=num("height",170), weight=num("weight",70), sex=num("sex",1);
+  const rmaT=num("rmaTarget",1), rmaS=num("rmaStart",0), rmaL=num("rmaLoad",0), rmaSt=num("rmaStop",0);
+  const rifT=num("rifTarget",10), rifS=num("rifStart",0), rifL=num("rifLoad",0), rifSt=num("rifStop",0);
+  const tEnd=num("tEnd",120);
+  if(age<18||age>100||height<120||height>220||weight<30||weight>200) throw new Error("患者情報の範囲外です");
+  if(rmaT<0||rifT<0||tEnd<5) throw new Error("負の値が指定されています");
+
+  const rp=rifParams(age,height,weight,sex);
+  const V1r=rp.V1R,V2r=rp.V2R,V3r=rp.V3r,CLR=rp.CL,Q2r=rp.Q2,Q3r=rp.Q3;
+  const K60=CLR/V1r,K67=Q2r/V1r,K76=Q2r/V2r,K68=Q3r/V1r,K86=Q3r/V3r;
+  const V1=RMA.V1,V2=RMA.V2,V3=RMA.V3,CL=RMA.CL,Q2=RMA.Q2,Q3=RMA.Q3,FM=RMA.FM;
+  const K10=CL*(1-FM)/V1,K12=Q2/V1,K21=Q2/V2,K13=Q3/V1,K31=Q3/V3,K14=CL*FM/V1;
+  const K50=META.CLM/META.V5,K54=META.KTR,IC50=INH_P.IC50,GAM=INH_P.GAM;
+
+  const dt=0.05;
+  const n=Math.max(1,Math.round(tEnd/dt));
+  // state: [rma C, rma V2, rma V3, pre-met, met, rif C, rif V2, rif V3]
+  const A=[0,0,0,0,0,0,0,0];
+  // bolus: load distributed to central
+  A[0]+=rmaL*1000; // mg -> (mg*1000)=µg... keep consistent: use ng scale
+  A[5]+=rifL*1000; // µg -> ng
+
+  const rows=[];
+  for(let i=0;i<=n;i++){
+    const t=i*dt;
+    const CR=A[5]/V1r; // ng/mL
+    // remifentanil TCI rate (ng/min)
+    let rate=0;
+    if(t>=rifS && (rifSt===0||t<rifSt)) rate=rifT*CLR;
+    // remimazolam TCI rate
+    let rmaRate=0;
+    if(t>=rmaS && (rmaSt===0||t<rmaSt)) rmaRate=rmaT*CL; // µg/mL * L/min = µg/min
+
+    const INH = CR>0 ? Math.pow(CR,GAM)/(Math.pow(CR,GAM)+Math.pow(IC50,GAM)) : 0;
+
+    const d0=-K10*A[0]-K12*A[0]+K21*A[1]-K13*A[0]+K31*A[2]-K14*A[0];
+    const d1=K12*A[0]-K21*A[1];
+    const d2=K13*A[0]-K31*A[2];
+    const d3=K14*A[0]-K54*A[3];
+    const d4=-K50*A[4]*(1-INH)+K54*A[3];
+    const d5=-K60*A[5]-K67*A[5]+K76*A[6]-K68*A[5]+K86*A[7]+rate;
+    const d6=K67*A[5]-K76*A[6];
+    const d7=K68*A[5]-K86*A[7];
+    A[0]+=dt*d0;A[1]+=dt*d1;A[2]+=dt*d2;A[3]+=dt*d3;
+    A[4]+=dt*d4;A[5]+=dt*d5;A[6]+=dt*d6;A[7]+=dt*d7;
+    A[0]=Math.max(0,A[0]);A[4]=Math.max(0,A[4]);A[5]=Math.max(0,A[5]);
+    // add remimazolam TCI to central (mass)
+    A[0]+=rmaRate*dt;
+
+    const CP=A[0]/V1;       // µg/mL
+    const CM=A[4]/META.V5*MW_RATIO; // µg/mL (scaled)
+    const CRr=A[5]/V1r;     // ng/mL
+
+    const CAM=(CP/PD.EC50M)**PD.GAMMAM, CBM=CM/PD.EC50MM, CCM=CRr/PD.EC50MR;
+    const DRUGM=PD.EMAXM*(CAM/(1+CAM+CBM))*(1+CCM);
+    const CA=CP/PD.EC50B, CB=CM/PD.EC50MB, CC=CRr/PD.EC50RB;
+    const DRUGB=PD.EMAXB*(CA+CC)/(1+CA+CB+CC);
+    // convert DRUGM (continuous sedation index) to MOAA/S 0-6
+    const MOAAS=Math.max(0,Math.min(6, 6 - 6/(1+Math.exp((DRUGM-4.6)/0.9))));
+    const BIS=Math.max(0,Math.min(100, 100 - 100/(1+Math.exp((DRUGB-0.95)/0.28))));
+    if(i%Math.max(1,Math.round(n/240))===0 || i===n){
+      rows.push({t,CP,CM,CRr,INH,MOAAS,BIS});
+    }
+  }
+  return { rows, pk:{V1R,V2R,V3r,CLR,Q2r,Q3r, K60,K67,K76,K68,K86, INHmax: Math.max(...rows.map(r=>r.INH)) } };
+}
+
+// ===================== Render =====================
+let lastRows=null, lastPK=null;
+function fmt(x,d=2){ return (x==null? "–" : x.toFixed(d)); }
+function showErr(msg){ const e=document.getElementById("errBox"); e.style.display="block"; e.textContent=msg; }
+function hideErr(){ document.getElementById("errBox").style.display="none"; }
+
+function render(res){
+  hideErr();
+  lastRows=res.rows; lastPK=res.pk;
+  document.getElementById("pkCard").style.display="block";
+  document.getElementById("chartCard").style.display="block";
+  document.getElementById("tableCard").style.display="block";
+  const p=res.pk;
+  const stats=[
+    ["レミマゾラム V1",fmt(p.V1R,2),"L"],
+    ["レミマゾラム CL",fmt(RMA.CL,2),"L/min"],
+    ["代謝物 V5",fmt(META.V5,1),"L"],
+    ["レミフェンタニル V1R",fmt(p.V1R,2),"L"],
+    ["レミフェンタニル CL",fmt(p.CL,2),"L/min"],
+    ["レミフェンタニル Q2R",fmt(p.Q2r,2),"L/min"],
+    ["レミフェンタニル Q3R",fmt(p.Q3r,3),"L/min"],
+    ["最大INH",fmt(p.INHmax*100,1),"%"]
+  ];
+  document.getElementById("pkStats").innerHTML=stats.map(s=>
+    `<div class="stat"><div class="k">${s[0]}</div><div class="v">${s[1]}<span class="u"> ${s[2]}</span></div></div>`).join("");
+  drawChart();
+  renderTable();
+}
+
+function renderTable(){
+  const rows=lastRows; const body=document.getElementById("dataRows");
+  body.innerHTML=rows.map(r=>
+    `<tr><td>${fmt(r.t,1)}</td><td>${fmt(r.CP,2)}</td><td>${fmt(r.CM,2)}</td><td>${fmt(r.CRr,2)}</td><td>${fmt(r.INH*100,1)}</td><td>${fmt(r.MOAAS,1)}</td><td>${fmt(r.BIS,0)}</td></tr>`
+  ).join("");
+}
+
+// ===================== Chart (canvas, no deps) =====================
+const chart=document.getElementById("chart");
+const ctx=chart.getContext("2d");
+let view={x0:0,x1:1,y0:0,y1:1,init:false};
+function sizeChart(){
+  const w=chart.parentElement.clientWidth||600;
+  const dpr=window.devicePixelRatio||1;
+  chart.width=Math.round(w*dpr); chart.height=Math.round(340*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+function xToPx(x){ const W=chart.width/(window.devicePixelRatio||1); return (x-view.x0)/(view.x1-view.x0)*W; }
+function yToPxC(y){ const H=340; return H-(y-view.y0)/(view.y1-view.y0)*H; }
+
+function drawChart(){
+  if(!lastRows) return;
+  sizeChart();
+  const W=chart.clientWidth, H=340;
+  ctx.clearRect(0,0,W,H);
+  const rows=lastRows;
+  // y range: concentrations (left) auto; right axis 0-100 for MOAAS*? We'll plot MOAAS 0-6 and BIS 0-100 scaled to H.
+  const maxC=Math.max(1e-6, ...rows.map(r=>Math.max(r.CP,r.CM,r.CRr)));
+  view.y1=Math.max(view.init?view.y1:maxC*1.05, maxC*1.05);
+  view.y0=0; view.x1=rows.length?rows[rows.length-1].t:1; view.x0=0;
+  // grid
+  ctx.strokeStyle="#e5e9f0"; ctx.lineWidth=1; ctx.fillStyle="#6b7280"; ctx.font="11px sans-serif";
+  const nx=6,ny=5;
+  for(let i=0;i<=nx;i++){ const x=view.x0+(view.x1-view.x0)*i/nx; const px=xToPx(x);
+    ctx.beginPath();ctx.moveTo(px,0);ctx.lineTo(px,H);ctx.stroke();
+    ctx.fillText(fmt(x,0),px+2,H-4); }
+  for(let i=0;i<=ny;i++){ const y=view.y0+(view.y1-view.y0)*i/ny; const py=yToPxC(y);
+    ctx.beginPath();ctx.moveTo(0,py);ctx.lineTo(W,py);ctx.stroke();
+    ctx.fillText(fmt(y,1),4,py-3); }
+  // right axis labels (MOAAS 0-6 & BIS 0-100 share 0..H)
+  ctx.strokeStyle="#f1f5f9";
+  for(let i=0;i<=5;i++){ const py=H-H*i/5; ctx.fillText("BIS "+Math.round(100*i/5),W-40,py+4); }
+  // series
+  const series=[
+    {k:"CP",c:"#2563eb"},{k:"CM",c:"#7c3aed"},{k:"CRr",c:"#e11d48"},
+    {k:"MOAAS",c:"#f59e0b",right:true},
+    {k:"BIS",c:"#64748b",right:true}
+  ];
+  for(const s of series){
+    ctx.strokeStyle=s.c; ctx.lineWidth=2; ctx.beginPath();
+    rows.forEach((r,i)=>{
+      let val=r[s.k]; let py;
+      if(s.right){ py=H-(val/(s.k==="MOAAS"?6:100))*H; } else { py=yToPxC(val); }
+      const px=xToPx(r.t);
+      if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    });
+    ctx.stroke();
+  }
+}
+
+// wheel/zoom (concise)
+chart.addEventListener("wheel",e=>{
+  e.preventDefault();
+  const rect=chart.getBoundingClientRect();
+  const fx=(e.clientX-rect.left)/rect.width;
+  if(e.shiftKey){ // time zoom
+    const span=view.x1-view.x0; const f=e.deltaY<0?0.8:1.25; const cx=view.x0+fx*span;
+    const ns=span*f; view.x0=cx-ns*fx; view.x1=cx+ns*(1-fx);
+  } else { // conc zoom (0 fixed)
+    const f=e.deltaY<0?0.8:1.25; view.y1=Math.max(1e-6,view.y1*f);
+  }
+  drawChart();
+},{passive:false});
+chart.addEventListener("dblclick",()=>{ view={x0:0,x1:1,y0:0,y1:1,init:false}; drawChart(); });
+
+// ===================== Wire up =====================
+function run(){
+  try{ const res=simulate(); render(res); }
+  catch(e){ showErr(e.message); }
+}
+document.getElementById("calc").addEventListener("click",run);
+document.getElementById("reset").addEventListener("click",()=>{
+  document.getElementById("pkCard").style.display="none";
+  document.getElementById("chartCard").style.display="none";
+  document.getElementById("tableCard").style.display="none";
+  hideErr();
+});
+document.getElementById("csv").addEventListener("click",()=>{
+  if(!lastRows) return;
+  const head="time_min,remimazolam_Cp_umol,metabolite_Cm_umol,remifentanil_Cr_ng,INH_pct,MOAAS,BIS";
+  const lines=lastRows.map(r=>[r.t.toFixed(2),r.CP.toFixed(3),r.CM.toFixed(3),r.CRr.toFixed(3),(r.INH*100).toFixed(1),r.MOAAS.toFixed(2),r.BIS.toFixed(1)].join(","));
+  const blob=new Blob([head+"\n"+lines.join("\n")],{type:"text/csv"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="vellinga_sim.csv"; a.click(); URL.revokeObjectURL(a.href);
+});
+window.addEventListener("resize",drawChart);
+// auto-run once with defaults
+run();
+</script>
+</body>
+</html>
