@@ -195,9 +195,10 @@ const PD = {
   // MOAAS ordinal model thresholds
   BASE0:2.1, BASE1:0.5, BASE2:-0.1, BASE3:-0.4, BASE4:0.6,
   EMAXM: Math.exp(2.4), EC50M: 5.3, EC50MM: 8.0, GAMMAM: Math.exp(0.5), EC50MR: Math.exp(-0.3),
-  // BIS model
-  BASEB: Math.exp(4.54), EMAXB: Math.exp(1.2), EC50B: Math.exp(5.2),
-  EC50MB: Math.exp(9.0), EC50RB: Math.exp(2.08)
+  // BIS model (Vellinga 2025 Anesthesiology 142:666-79 Table 1)
+  // Converted to simulation units: EC50B 202 ng/mL -> 0.202 ug/mL, EC50MB 9495 ng/mL -> 9.495 ug/mL, EC50RB 7.96 ng/mL
+  BASEB: 94.0, EMAXB: 3.5, EC50B: 0.202,
+  EC50MB: 9.495, EC50RB: 7.96
 };
 // Remifentanil Eleveld 2017 THETA (fixed)
 const T = [null,1.759110,2.177170,1.614450,9.462570e-1,5.403150e-1,-2.083880,
