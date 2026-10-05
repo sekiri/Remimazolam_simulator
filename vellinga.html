@@ -58,6 +58,10 @@
   .card-collapsible .card-body{margin-top:10px;}
   .card-collapsible.collapsed .card-body{display:none;}
   .card-collapsible.collapsed .card-h{margin-bottom:0;}
+  .chart-tools{margin-left:auto;display:flex;gap:4px;align-items:center;}
+  .chart-tools .btn{padding:3px 8px;font-size:11.5px;border-radius:6px;}
+  #chartCard h2{display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
+  canvas{touch-action:none;}
 </style>
 </head>
 <body>
@@ -135,7 +139,14 @@
 
       <div class="card" id="chartCard" style="display:none">
         <h2>血中濃度と鎮静深度
-          <span class="muted" style="font-weight:400;font-size:11px">左軸:濃度（µg/mL または ng/mL）｜右軸:BIS (0–100) / MOAA/S (0–5)</span>
+          <span class="muted" style="font-weight:400;font-size:11px">ホイール:濃度拡大(0固定)｜Shift+ホイール:時間(カーソル中心)｜ドラッグ:移動｜ピンチ:ズーム｜ダブルクリック:リセット</span>
+          <div class="chart-tools">
+            <button class="btn btn-ghost btn-sm" id="zInX" title="時間軸を拡大">X＋</button>
+            <button class="btn btn-ghost btn-sm" id="zOutX" title="時間軸を縮小">X−</button>
+            <button class="btn btn-ghost btn-sm" id="zInY" title="濃度軸を拡大">Y＋</button>
+            <button class="btn btn-ghost btn-sm" id="zOutY" title="濃度軸を縮小">Y−</button>
+            <button class="btn btn-ghost btn-sm" id="zReset" title="表示範囲を初期化">初期表示</button>
+          </div>
         </h2>
         <canvas id="chart" height="340"></canvas>
         <div class="legend">
@@ -376,90 +387,318 @@ function renderTable(){
   ).join("");
 }
 
-// ===================== Chart (canvas, no deps) =====================
-const chart=document.getElementById("chart");
-const ctx=chart.getContext("2d");
-let view={x0:0,x1:1,y0:0,y1:1,init:false};
-function sizeChart(){
-  const w=chart.parentElement.clientWidth||600;
-  const dpr=window.devicePixelRatio||1;
-  chart.width=Math.round(w*dpr); chart.height=Math.round(340*dpr);
-  ctx.setTransform(dpr,0,0,dpr,0,0);
+// ===================== Chart (canvas, zoom/pan) =====================
+const chartView = { t0:0, t1:0, c0:0, c1:0 };
+function niceStep(span, target){
+  const raw = span / target, mag = Math.pow(10, Math.floor(Math.log10(raw))), n = raw / mag;
+  const step = n < 1.5 ? 1 : n < 3.5 ? 2 : n < 7.5 ? 5 : 10;
+  return step * mag;
 }
-function xToPx(x){ const W=chart.width/(window.devicePixelRatio||1); return (x-view.x0)/(view.x1-view.x0)*W; }
-function yToPxC(y){ const H=340; return H-(y-view.y0)/(view.y1-view.y0)*H; }
+
+function setupChart(){
+  if(window.__chartCleanup) window.__chartCleanup();
+  const cv = document.getElementById("chart");
+  if(!cv || !lastRows || !lastRows.length) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W = cv.parentElement.clientWidth || 600, H = 340;
+  cv.style.cursor = "crosshair";
+  cv.width = Math.round(W * dpr);
+  cv.height = Math.round(H * dpr);
+  const ctx = cv.getContext("2d");
+
+  const padL = 48, padR = 85, padT = 16, padB = 30;
+  const pw = W - padL - padR, ph = H - padT - padB;
+
+  const X = t => padL + (t - chartView.t0) / (chartView.t1 - chartView.t0) * pw;
+  const Y = c => padT + ph - (c - chartView.c0) / (chartView.c1 - chartView.c0) * ph;
+  const Yright = (val, maxVal) => padT + ph - (val / maxVal) * ph;
+  const invT = x => chartView.t0 + (x - padL) / pw * (chartView.t1 - chartView.t0);
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+  const tFull = Math.max(...lastRows.map(s => s.t));
+  const cFull = Math.max(0.5, ...lastRows.map(s => Math.max(s.CP, s.CM, s.CRr))) * 1.15;
+  const MIN_XSPAN = 4.5;
+
+  let dragging = false, moved = 0, dragX = -1;
+
+  function render(){
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    ctx.font = '11px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif';
+
+    const tSpan = chartView.t1 - chartView.t0, cSpan = chartView.c1 - chartView.c0;
+
+    // Y Grid & labels (Concentrations)
+    const cStep = niceStep(cSpan, 5);
+    let cStart = Math.ceil(chartView.c0 / cStep) * cStep;
+    if(cStart < chartView.c0) cStart += cStep;
+    for(let c = cStart; c <= chartView.c1 + 1e-9; c += cStep){
+      const y = Y(c);
+      ctx.strokeStyle = '#eef1f6'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+      ctx.fillStyle = '#9aa3b2'; ctx.textAlign = 'right';
+      ctx.fillText(c.toFixed(cStep < 1 ? 2 : 1), padL - 6, y + 4);
+    }
+
+    // X Grid & labels (Time min)
+    const tStep = niceStep(tSpan, 6);
+    let tStart = Math.ceil(chartView.t0 / tStep) * tStep;
+    if(tStart < chartView.t0) tStart += tStep;
+    for(let t = tStart; t <= chartView.t1 + 1e-9; t += tStep){
+      const x = X(t);
+      ctx.strokeStyle = '#eef1f6'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x, padT); ctx.lineTo(x, H - padB); ctx.stroke();
+      ctx.fillStyle = '#9aa3b2'; ctx.textAlign = 'center';
+      ctx.fillText(t.toFixed(tStep < 1 ? 1 : 0), x, H - padB + 16);
+    }
+
+    // Right axis labels (BIS 0-100 & MOAA/S 0-5)
+    ctx.textAlign = 'left';
+    for(let i = 0; i <= 5; i++){
+      const y = Yright(i * 20, 100);
+      ctx.fillStyle = '#64748b';
+      ctx.fillText(`BIS ${i * 20}`, W - padR + 8, y + 4);
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillText(`M${i}`, W - padR + 56, y + 4);
+    }
+
+    // Axis titles
+    ctx.fillStyle = '#6b7280'; ctx.textAlign = 'center';
+    ctx.fillText('時間（分）', padL + pw / 2, H - 4);
+    ctx.save();
+    ctx.translate(13, padT + ph / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText('濃度（µg/mL または ng/mL）', 0, 0);
+    ctx.restore();
+
+    // Plot area clip
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(padL, padT, pw, ph);
+    ctx.clip();
+
+    const drawLine = (key, color, width, rightScale, dash) => {
+      ctx.strokeStyle = color; ctx.lineWidth = width;
+      ctx.setLineDash(dash || []);
+      ctx.beginPath();
+      let started = false;
+      lastRows.forEach(s => {
+        if(s.t < chartView.t0 - tStep || s.t > chartView.t1 + tStep){ started = false; return; }
+        const x = X(s.t);
+        const y = rightScale ? Yright(s[key], rightScale) : Y(s[key]);
+        if(!started){ ctx.moveTo(x, y); started = true; }
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+      ctx.setLineDash([]);
+    };
+
+    // Series
+    drawLine('CP', '#2563eb', 2.2, null, []);
+    drawLine('CM', '#7c3aed', 2.0, null, []);
+    drawLine('CRr', '#e11d48', 2.0, null, []);
+    drawLine('MOAAS', '#f59e0b', 1.8, 5, [4, 3]);
+    drawLine('BIS', '#64748b', 1.8, 100, []);
+
+    ctx.restore();
+
+    // Zoom badge indicator
+    if(Math.abs(chartView.t1 - tFull) > 1e-6 || Math.abs(chartView.c1 - cFull) > 1e-6){
+      ctx.fillStyle = '#94a3b8'; ctx.font = '10px sans-serif'; ctx.textAlign = 'right';
+      ctx.fillText('拡大表示中（ダブルクリックまたは初期表示で戻す）', W - padR, padT - 4);
+    }
+
+    return { padL, padT, pw, ph, X, Y, invT };
+  }
+
+  function hover(e){
+    const sc = render();
+    const r = cv.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+    if(mx < sc.padL || mx > W - sc.padR || my < sc.padT || my > H - padB) return;
+    const t = clamp(sc.invT(mx), 0, tFull);
+    const row = lastRows.reduce((a, b) => Math.abs(b.t - t) < Math.abs(a.t - t) ? b : a);
+    const x = sc.X(row.t);
+
+    ctx.strokeStyle = '#cbd5e1'; ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(x, sc.padT); ctx.lineTo(x, H - padB); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Dots
+    ctx.fillStyle = '#2563eb'; ctx.beginPath(); ctx.arc(x, Y(row.CP), 3.5, 0, 7); ctx.fill();
+    ctx.fillStyle = '#7c3aed'; ctx.beginPath(); ctx.arc(x, Y(row.CM), 3.5, 0, 7); ctx.fill();
+    ctx.fillStyle = '#e11d48'; ctx.beginPath(); ctx.arc(x, Y(row.CRr), 3.5, 0, 7); ctx.fill();
+
+    const label = `t=${row.t.toFixed(1)}分 | Cp=${row.CP.toFixed(2)} | Cm=${row.CM.toFixed(2)} | Cr=${row.CRr.toFixed(2)} | MOAA/S=${row.MOAAS.toFixed(2)} | BIS=${row.BIS.toFixed(0)} | INH=${(row.INH*100).toFixed(0)}%`;
+    ctx.font = '11.5px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif';
+    const tw = ctx.measureText(label).width + 16;
+    let bx = x + 10;
+    if(bx + tw > W - padR) bx = x - tw - 10;
+    if(bx < padL) bx = padL + 4;
+    const by = sc.padT + 6;
+
+    ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.roundRect(bx, by, tw, 22, 5); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#1e293b'; ctx.textAlign = 'left';
+    ctx.fillText(label, bx + 8, by + 15);
+  }
+
+  // Zoom helpers
+  const zoomAt = (axis, factor) => {
+    if(axis === 'x'){
+      const span = (chartView.t1 - chartView.t0) * factor;
+      if(span < MIN_XSPAN) return;
+      if(span >= tFull - 1e-6){ chartView.t0 = 0; chartView.t1 = tFull; }
+      else {
+        const mid = (chartView.t0 + chartView.t1) / 2;
+        chartView.t0 = clamp(mid - span / 2, 0, tFull - span);
+        chartView.t1 = chartView.t0 + span;
+      }
+    } else {
+      chartView.c0 = 0;
+      chartView.c1 = Math.min(cFull * 2, Math.max(0.2, chartView.c1 * factor));
+    }
+    render();
+  };
+
+  const resetView = () => {
+    chartView.t0 = 0; chartView.t1 = tFull;
+    chartView.c0 = 0; chartView.c1 = cFull;
+    render();
+  };
+
+  // Wheel zoom
+  cv.onwheel = e => {
+    e.preventDefault();
+    const r = cv.getBoundingClientRect(), mx = e.clientX - r.left;
+    const factor = e.deltaY < 0 ? 0.82 : 1 / 0.82;
+    if(e.shiftKey){
+      const tc = clamp(chartView.t0 + (mx - padL) / pw * (chartView.t1 - chartView.t0), 0, tFull);
+      const span = (chartView.t1 - chartView.t0) * factor;
+      if(span < MIN_XSPAN) return;
+      if(span >= tFull - 1e-6){ chartView.t0 = 0; chartView.t1 = tFull; }
+      else {
+        chartView.t0 = clamp(tc - (tc - chartView.t0) * factor, 0, Math.max(0, tFull - span));
+        chartView.t1 = chartView.t0 + Math.min(span, tFull);
+      }
+    } else {
+      chartView.c0 = 0;
+      chartView.c1 = Math.min(cFull * 2, Math.max(0.2, chartView.c1 * factor));
+    }
+    render();
+  };
+
+  // Mouse pan
+  cv.onmousedown = e => {
+    dragging = true; moved = 0;
+    const r = cv.getBoundingClientRect(); dragX = e.clientX - r.left;
+    cv.style.cursor = 'grabbing';
+  };
+  const mmHandler = e => {
+    if(!dragging) return;
+    const r = cv.getBoundingClientRect(), mx = e.clientX - r.left;
+    moved += Math.abs(mx - dragX);
+    const dt = (mx - dragX) / pw * (chartView.t1 - chartView.t0);
+    dragX = mx;
+    const span = chartView.t1 - chartView.t0;
+    chartView.t0 = clamp(chartView.t0 - dt, 0, Math.max(0, tFull - span));
+    chartView.t1 = chartView.t0 + span;
+    render();
+  };
+  const muHandler = e => {
+    if(!dragging) return;
+    dragging = false; cv.style.cursor = 'crosshair';
+    if(moved < 4) hover(e);
+  };
+  window.addEventListener('mousemove', mmHandler);
+  window.addEventListener('mouseup', muHandler);
+  cv.onmousemove = e => { if(!dragging) hover(e); };
+  cv.onmouseleave = () => { if(!dragging) render(); };
+
+  // Touch handlers
+  let touches = null;
+  const tDist = ts => Math.hypot(ts[0].clientX - ts[1].clientX, ts[0].clientY - ts[1].clientY);
+  const touchstartH = e => {
+    if(e.touches.length === 1){
+      touches = { mode:'pan', x0:e.touches[0].clientX, t0:chartView.t0, t1:chartView.t1 };
+    } else if(e.touches.length >= 2){
+      touches = { mode:'pinch', d0:tDist(e.touches), t0:chartView.t0, t1:chartView.t1, c0:chartView.c0, c1:chartView.c1,
+        midX:(e.touches[0].clientX + e.touches[1].clientX)/2 };
+    }
+  };
+  const touchmoveH = e => {
+    if(!touches) return;
+    e.preventDefault();
+    if(touches.mode === 'pan' && e.touches.length === 1){
+      const dx = e.touches[0].clientX - touches.x0;
+      touches.x0 = e.touches[0].clientX;
+      const dt = dx / pw * (touches.t1 - touches.t0);
+      const span = touches.t1 - touches.t0;
+      chartView.t0 = clamp(chartView.t0 - dt, 0, Math.max(0, tFull - span));
+      chartView.t1 = chartView.t0 + span;
+      render();
+    } else if(touches.mode === 'pinch' && e.touches.length >= 2){
+      const d1 = tDist(e.touches);
+      const scale = touches.d0 / Math.max(1, d1);
+      const r = cv.getBoundingClientRect();
+      const mx = touches.midX - r.left;
+      const tc = clamp(touches.t0 + (mx - padL) / pw * (touches.t1 - touches.t0), 0, tFull);
+      const tSpan = (touches.t1 - touches.t0) * scale, cSpan = (touches.c1 - touches.c0) * scale;
+      if(tSpan < MIN_XSPAN && tSpan < tFull - 1e-6) return;
+      if(tSpan >= tFull - 1e-6 && cSpan >= cFull - 1e-6){
+        chartView.t0 = 0; chartView.t1 = tFull; chartView.c0 = 0; chartView.c1 = cFull;
+      } else {
+        chartView.t0 = clamp(tc - (tc - touches.t0) * scale, 0, Math.max(0, tFull - tSpan));
+        chartView.t1 = chartView.t0 + Math.min(tSpan, tFull);
+        chartView.c0 = 0;
+        chartView.c1 = Math.min(cFull * 2, Math.max(0.2, touches.c1 * scale));
+      }
+      render();
+    }
+  };
+  cv.addEventListener('touchstart', touchstartH, { passive:true });
+  cv.addEventListener('touchmove', touchmoveH, { passive:false });
+  const touchEnd = () => { touches = null; };
+  cv.addEventListener('touchend', touchEnd);
+  cv.addEventListener('touchcancel', touchEnd);
+
+  // Wire buttons
+  const bInX = document.getElementById('zInX'), bOutX = document.getElementById('zOutX');
+  const bInY = document.getElementById('zInY'), bOutY = document.getElementById('zOutY');
+  const bReset = document.getElementById('zReset');
+  if(bInX) bInX.onclick = () => zoomAt('x', 0.6);
+  if(bOutX) bOutX.onclick = () => zoomAt('x', 1 / 0.6);
+  if(bInY) bInY.onclick = () => zoomAt('y', 0.6);
+  if(bOutY) bOutY.onclick = () => zoomAt('y', 1 / 0.6);
+  if(bReset) bReset.onclick = resetView;
+  cv.ondblclick = resetView;
+
+  // Cleanup handler for resize / redraw
+  window.__chartCleanup = () => {
+    cv.onwheel = null; cv.onmousedown = null; cv.onmousemove = null; cv.onmouseleave = null; cv.ondblclick = null;
+    window.removeEventListener('mousemove', mmHandler);
+    window.removeEventListener('mouseup', muHandler);
+    cv.removeEventListener('touchstart', touchstartH);
+    cv.removeEventListener('touchmove', touchmoveH);
+    cv.removeEventListener('touchend', touchEnd);
+    cv.removeEventListener('touchcancel', touchEnd);
+    if(bInX) bInX.onclick = null; if(bOutX) bOutX.onclick = null;
+    if(bInY) bInY.onclick = null; if(bOutY) bOutY.onclick = null;
+    if(bReset) bReset.onclick = null;
+  };
+
+  // Initial bounds
+  if(chartView.t1 === 0 || chartView.c1 === 0){
+    chartView.t0 = 0; chartView.t1 = tFull;
+    chartView.c0 = 0; chartView.c1 = cFull;
+  }
+  render();
+}
 
 function drawChart(){
   if(!lastRows) return;
-  sizeChart();
-  const W=chart.clientWidth, H=340;
-  ctx.clearRect(0,0,W,H);
-  const rows=lastRows;
-  const maxC=Math.max(1e-6, ...rows.map(r=>Math.max(r.CP,r.CM,r.CRr)));
-  view.y1=Math.max(view.init?view.y1:maxC*1.1, maxC*1.1);
-  view.y0=0; view.x1=rows.length?rows[rows.length-1].t:1; view.x0=0;
-
-  // Grid
-  ctx.strokeStyle="#e5e9f0"; ctx.lineWidth=1; ctx.fillStyle="#6b7280"; ctx.font="11px sans-serif";
-  const nx=6,ny=5;
-  for(let i=0;i<=nx;i++){
-    const x=view.x0+(view.x1-view.x0)*i/nx; const px=xToPx(x);
-    ctx.beginPath();ctx.moveTo(px,0);ctx.lineTo(px,H);ctx.stroke();
-    ctx.fillText(fmt(x,0),px+2,H-4);
-  }
-  for(let i=0;i<=ny;i++){
-    const y=view.y0+(view.y1-view.y0)*i/ny; const py=yToPxC(y);
-    ctx.beginPath();ctx.moveTo(0,py);ctx.lineTo(W,py);ctx.stroke();
-    ctx.fillText(fmt(y,1),4,py-3);
-  }
-
-  // Right axis labels (BIS 0-100 & MOAA/S 0-5 share 0..H)
-  ctx.fillStyle="#475569"; ctx.textAlign="right";
-  for(let i=0;i<=5;i++){
-    const py=H-H*i/5;
-    const bisVal=Math.round(100*i/5);
-    const moaaVal=i;
-    ctx.fillText(`BIS ${bisVal} (M${moaaVal})`, W-8, py+(i===0?-4:i===5?12:4));
-  }
-  ctx.textAlign="left";
-
-  // Series
-  const series=[
-    {k:"CP",c:"#2563eb",dash:[]},
-    {k:"CM",c:"#7c3aed",dash:[]},
-    {k:"CRr",c:"#e11d48",dash:[]},
-    {k:"MOAAS",c:"#f59e0b",right:true,scale:5,dash:[4,3]},
-    {k:"BIS",c:"#64748b",right:true,scale:100,dash:[]}
-  ];
-  for(const s of series){
-    ctx.strokeStyle=s.c; ctx.lineWidth=2;
-    ctx.setLineDash(s.dash);
-    ctx.beginPath();
-    rows.forEach((r,i)=>{
-      let val=r[s.k]; let py;
-      if(s.right){ py=H-(val/s.scale)*H; } else { py=yToPxC(val); }
-      const px=xToPx(r.t);
-      if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
-    });
-    ctx.stroke();
-  }
-  ctx.setLineDash([]);
+  setupChart();
 }
-
-// Wheel/zoom
-chart.addEventListener("wheel",e=>{
-  e.preventDefault();
-  const rect=chart.getBoundingClientRect();
-  const fx=(e.clientX-rect.left)/rect.width;
-  if(e.shiftKey){
-    const span=view.x1-view.x0; const f=e.deltaY<0?0.8:1.25; const cx=view.x0+fx*span;
-    const ns=span*f; view.x0=cx-ns*fx; view.x1=cx+ns*(1-fx);
-  } else {
-    const f=e.deltaY<0?0.8:1.25; view.y1=Math.max(1e-6,view.y1*f);
-  }
-  drawChart();
-},{passive:false});
-chart.addEventListener("dblclick",()=>{ view={x0:0,x1:1,y0:0,y1:1,init:false}; drawChart(); });
 
 // ===================== Wire up =====================
 function run(){
