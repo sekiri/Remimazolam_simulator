@@ -18,7 +18,7 @@
   .sub{font-size:12px;color:var(--muted);margin-left:8px}
   .back-link{font-size:13px;color:var(--accent);text-decoration:none}
   .back-link:hover{text-decoration:underline}
-  .grid{display:grid;grid-template-columns:360px 1fr;gap:16px}
+  .grid{display:grid;grid-template-columns:370px 1fr;gap:16px}
   @media(max-width:880px){.grid{grid-template-columns:1fr}}
   .card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:12px}
   .card h2{font-size:14px;font-weight:700;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
@@ -62,6 +62,13 @@
   .chart-tools .btn{padding:3px 8px;font-size:11.5px;border-radius:6px;}
   #chartCard h2{display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
   canvas{touch-action:none;}
+  .btn-outline{background:#fff;border:1px dashed var(--accent);color:var(--accent);font-size:11px;padding:3px 8px;border-radius:4px;cursor:pointer}
+  .btn-outline:hover{background:#eff6ff}
+  .dose-head{display:flex;justify-content:space-between;align-items:center;margin-top:10px;margin-bottom:6px}
+  .dose-head label{margin-bottom:0;font-weight:600;color:var(--ink);font-size:11.5px}
+  .dose-item{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:start;margin-bottom:8px;background:#f8fafc;border:1px solid var(--line);border-radius:6px;padding:8px}
+  .row-del{margin-top:20px;color:#b91c1c;border-color:#fecaca;padding:3px 8px;font-size:11px}
+  .row-del:hover{background:#fee2e2}
 </style>
 </head>
 <body>
@@ -95,26 +102,43 @@
       <div class="card">
         <h2>レミマゾラム 投与 <span class="tag">mg/h ・ mg</span></h2>
         <div class="row">
-          <div><label>持続速度（mg/h）</label><input type="number" id="rmaRate" placeholder="70" min="0" step="0.1" value="70"><div class="hint" id="rmaRef"></div></div>
+          <div><label>初期持続速度（mg/h）</label><input type="number" id="rmaRate" placeholder="70" min="0" step="0.1" value="70"><div class="hint" id="rmaRef"></div></div>
           <div><label>開始（分）</label><input type="number" id="rmaStart" placeholder="0" min="0" step="1" value="0"></div>
         </div>
-        <div class="row">
-          <div><label>静注（mg）</label><input type="number" id="rmaLoad" placeholder="0" min="0" step="0.1" value="0"><div class="hint">0 = 静注なし</div></div>
-          <div><label>終了（分）</label><input type="number" id="rmaStop" placeholder="0" min="0" step="1" value="0"><div class="hint">0 = 最後まで投与</div></div>
+
+        <div class="dose-head">
+          <label>静注（ボーラス）</label>
+          <button class="btn btn-outline" id="addRmaBolus" type="button">＋ 静注を追加</button>
         </div>
+        <div id="rmaBolusList"></div>
+
+        <div class="dose-head">
+          <label>持続速度の変更 <span class="muted" style="font-weight:400;font-size:10.5px">0=投与終了</span></label>
+          <button class="btn btn-outline" id="addRmaInfChange" type="button">＋ 速度変更を追加</button>
+        </div>
+        <div id="rmaInfChangeList"></div>
       </div>
 
       <div class="card">
         <h2>レミフェンタニル 投与 <span class="tag">mg/h ・ mg</span></h2>
         <div class="row">
-          <div><label>持続速度（mg/h）</label><input type="number" id="rifRate" placeholder="0.42" min="0" step="0.01" value="0.42"><div class="hint" id="rifRef"></div></div>
+          <div><label>初期持続速度（mg/h）</label><input type="number" id="rifRate" placeholder="0.42" min="0" step="0.01" value="0.42"><div class="hint" id="rifRef"></div></div>
           <div><label>開始（分）</label><input type="number" id="rifStart" placeholder="0" min="0" step="1" value="0"></div>
         </div>
-        <div class="row">
-          <div><label>静注（mg）</label><input type="number" id="rifLoad" placeholder="0" min="0" step="0.01" value="0"><div class="hint">0 = 静注なし</div></div>
-          <div><label>終了（分）</label><input type="number" id="rifStop" placeholder="0" min="0" step="1" value="0"><div class="hint">0 = 最後まで投与</div></div>
+
+        <div class="dose-head">
+          <label>静注（ボーラス）</label>
+          <button class="btn btn-outline" id="addRifBolus" type="button">＋ 静注を追加</button>
         </div>
-        <div class="hint">※日本で TCI 投与が認可されている静脈麻酔薬はプロポフォール（ディプリバン）のみです。レミマゾラム（アネレム）およびレミフェンタニル（アルチバ）は持続投与（mg/h や mg/kg/h）で管理されます。</div>
+        <div id="rifBolusList"></div>
+
+        <div class="dose-head">
+          <label>持続速度の変更 <span class="muted" style="font-weight:400;font-size:10.5px">0=投与終了</span></label>
+          <button class="btn btn-outline" id="addRifInfChange" type="button">＋ 速度変更を追加</button>
+        </div>
+        <div id="rifInfChangeList"></div>
+
+        <div class="hint" style="margin-top:8px">※日本で TCI 投与が認可されている静脈麻酔薬はプロポフォール（ディプリバン）のみです。レミマゾラム（アネレム）およびレミフェンタニル（アルチバ）は持続投与（mg/h や mg/kg/h）で管理されます。</div>
       </div>
 
       <div class="card">
@@ -133,7 +157,7 @@
       <div class="error" id="errBox"></div>
 
       <div class="card" id="pkCard" style="display:none">
-        <h2>計算された PK パラメータ <span class="badge" id="pkBadge"></span></h2>
+        <h2>計算された PK/PD パラメータ <span class="badge" id="pkBadge"></span></h2>
         <div class="stats-grid" id="pkStats"></div>
       </div>
 
@@ -155,6 +179,8 @@
           <span><i style="background:var(--rif)"></i>レミフェンタニル Cr (ng/mL)</span>
           <span><i style="background:var(--moaa);border-top:2px dashed;background:none;width:14px"></i>MOAA/S (0–5, 右軸)</span>
           <span><i style="background:var(--bis)"></i>BIS (0–100, 右軸)</span>
+          <span><i style="border-top:2px dotted #0d9488;background:none;width:14px"></i>TOL 喉頭展開耐性 (%, 右軸)</span>
+          <span><i style="border-top:2px dashed #0284c7;background:none;width:14px"></i>TOTS 強直刺激耐性 (%, 右軸)</span>
         </div>
       </div>
 
@@ -162,7 +188,7 @@
         <h2 class="card-h">時刻別数値 <button class="btn btn-ghost btn-sm" id="csv" type="button">CSV出力</button><span class="chev">開く ▾</span></h2>
         <div class="card-body">
           <table id="dataTable">
-            <thead><tr><th>時間(分)</th><th>レミマゾラム Cp(µg/mL)</th><th>代謝物 Cm(µg/mL)</th><th>レミフェンタニル Cr(ng/mL)</th><th>INH(%)</th><th>MOAA/S</th><th>BIS</th></tr></thead>
+            <thead><tr><th>時間(分)</th><th>レミマゾラム Cp(µg/mL)</th><th>代謝物 Cm(µg/mL)</th><th>レミフェンタニル Cr(ng/mL)</th><th>INH(%)</th><th>MOAA/S</th><th>BIS</th><th>TOL(%)</th><th>TOTS(%)</th></tr></thead>
             <tbody id="dataRows"></tbody>
           </table>
         </div>
@@ -175,7 +201,7 @@
           <p><b>代謝物 CNS7054</b>: 見かけの CL=0.05 L/min, V5≈7.8 L, ktr≈0.30。</p>
           <p><b>レミフェンタニル PK</b>: Eleveld et al., Anesthesiology 2017 の3コンパートメント allometric モデル（補遺 D790 の固定 THETA）。</p>
           <p><b>相互作用</b>: remifentanil が代謝物の分解を競合的に抑制（IC50=8.0 ng/mL, Hill=0.6）→ 代謝物蓄積（急性耐性）。</p>
-          <p><b>PD</b>: MOAA/S と BIS を補遺 D791 の refit 値で予測（順位ロジット期待値および Emax モデル）。</p>
+          <p><b>PD（MOAA/S・BIS・TOL・TOTS）</b>: Vellinga et al., Anesthesiology 2025; 142:666–79 Table 1 の母集団薬力学パラメータを完全採用（順位カテゴリカルモデルによる MOAA/S 予測、BIS 回帰式、喉頭展開耐性 TOL%、強直刺激耐性 TOTS%）。</p>
         </div>
       </div>
     </div>
@@ -190,16 +216,23 @@ const RMA = { V1:5.31, V2:12.81, V3:40.04, CL:1.15, Q2:0.91, Q3:0.29, FM:0.8 };
 const META = { CLM:0.05, V5:7.8, KTR:0.30 };
 const INH_P = { IC50:8.0, GAM:0.6 };
 const MW_RATIO = 425.3/439.3; // CNS7054 vs remimazolam molecular-weight scaling
-// PD (D791 refit) — exact NONMEM $THETA mapping
+// PD (Vellinga et al., Anesthesiology 2025; 142:666-79 Table 1)
 const PD = {
-  // MOAAS ordinal model thresholds
-  BASE0:2.1, BASE1:0.5, BASE2:-0.1, BASE3:-0.4, BASE4:0.6,
-  EMAXM: Math.exp(2.4), EC50M: 5.3, EC50MM: 8.0, GAMMAM: Math.exp(0.5), EC50MR: Math.exp(-0.3),
-  // BIS model (Vellinga 2025 Anesthesiology 142:666-79 Table 1)
-  // Converted to simulation units: EC50B 202 ng/mL -> 0.202 ug/mL, EC50MB 9495 ng/mL -> 9.495 ug/mL, EC50RB 7.96 ng/mL
-  BASEB: 94.0, EMAXB: 3.5, EC50B: 0.202,
-  EC50MB: 9.495, EC50RB: 7.96
+  // MOAAS ordinal model (Table 1: BASE0=-9.7, BASE1=2.0, BASE2=1.1, BASE3=0.8, BASE4=2.2)
+  // Cumulative threshold baselines: A0=-9.7, A1=-7.7, A2=-6.6, A3=-5.8, A4=-3.6
+  A0: -9.7, A1: -7.7, A2: -6.6, A3: -5.8, A4: -3.6,
+  EMAXM: 11.7,
+  // Converted to simulation units: EC50M 211 ng/mL -> 0.211 ug/mL, EC50MM 3160 ng/mL -> 3.160 ug/mL, EC50MR 2.5 ng/mL
+  EC50M: 0.211, EC50MM: 3.160, EC50MR: 2.5, GAMMAM: 1.75,
+  // BIS model (Table 1: BASEB=94.0, EMAXB=3.5, EC50B=202 ng/mL, EC50BM=9495 ng/mL, EC50Br=7.96 ng/mL)
+  BASEB: 94.0, EMAXB: 3.5, EC50B: 0.202, EC50MB: 9.495, EC50RB: 7.96,
+  // Tolerance to Laryngoscopy (TOL) & Tetanic Stimulation (TOTS)
+  // EC50T 54128 ng/mL -> 54.128 ug/mL, EC50Tr 0.02 ng/mL
+  // EC50TO 12133 ng/mL -> 12.133 ug/mL, EC50TOr 0.04 ng/mL
+  EC50T: 54.128, EC50Tr: 0.02,
+  EC50TO: 12.133, EC50TOr: 0.04
 };
+
 // Remifentanil Eleveld 2017 THETA (fixed)
 const T = [null,1.759110,2.177170,1.614450,9.462570e-1,5.403150e-1,-2.083880,
   2.878980,-5.544810e-3,-3.269850e-3,-3.151350e-2,4.704050e-1,-2.604960e-2];
@@ -228,17 +261,60 @@ function rifParams(age,height,weight,sex){ // sex: 1=male, 2=female
   return { V1r:V1R, V2r:V2R, V3r:V3R, CL:Math.exp(T[4])*M4, Q2:Math.exp(T[5])*M5, Q3:Math.exp(T[6])*M6 };
 }
 
-function num(id, d){ const el=document.getElementById(id); const v=parseFloat(el.value); return (isFinite(v)?v:d); }
+function num(id, d){ const el=document.getElementById(id); const v=parseFloat(el?el.value:NaN); return (isFinite(v)?v:d); }
 function expit(x){ if(x>35)return 1; if(x<-35)return 0; return 1/(1+Math.exp(-x)); }
+
+// Dosage schedule helper functions
+function getBoluses(listId, tClass, doseClass){
+  const list = document.getElementById(listId);
+  if(!list) return [];
+  const items = [];
+  const rows = list.querySelectorAll(".dose-item");
+  rows.forEach(r => {
+    const ti = r.querySelector("." + tClass), di = r.querySelector("." + doseClass);
+    const t = ti ? parseFloat(ti.value) : NaN;
+    const d = di ? parseFloat(di.value) : NaN;
+    if(isFinite(t) && isFinite(d) && d > 0 && t >= 0) items.push({ t, dose: d });
+  });
+  return items.sort((a,b) => a.t - b.t);
+}
+
+function getInfChanges(startId, rate0Id, listId, tClass, rateClass){
+  const s0 = num(startId, 0), r0 = num(rate0Id, 0);
+  const items = [{ t: Math.max(0, s0), rate: Math.max(0, r0) }];
+  const list = document.getElementById(listId);
+  if(list){
+    const rows = list.querySelectorAll(".dose-item");
+    rows.forEach(r => {
+      const ti = r.querySelector("." + tClass), ri = r.querySelector("." + rateClass);
+      const t = ti ? parseFloat(ti.value) : NaN;
+      const rate = ri ? parseFloat(ri.value) : NaN;
+      if(isFinite(t) && isFinite(rate) && rate >= 0 && t >= 0) items.push({ t, rate });
+    });
+  }
+  return items.sort((a,b) => a.t - b.t);
+}
+
+function getRateAt(t, sched){
+  let cur = 0;
+  for(let k=0; k<sched.length; k++){
+    if(t >= sched[k].t) cur = sched[k].rate;
+    else break;
+  }
+  return cur;
+}
 
 // ===================== Simulation =====================
 function simulate(){
   const age=num("age",50), height=num("height",170), weight=num("weight",70), sex=num("sex",1);
-  const rmaR=num("rmaRate",70), rmaS=num("rmaStart",0), rmaL=num("rmaLoad",0), rmaSt=num("rmaStop",0);   // mg/h, mg
-  const rifR=num("rifRate",0.42), rifS=num("rifStart",0), rifL=num("rifLoad",0), rifSt=num("rifStop",0);  // mg/h, mg
   const tEnd=num("tEnd",120);
   if(age<18||age>100||height<120||height>220||weight<30||weight>200) throw new Error("患者情報の範囲外です");
-  if(rmaR<0||rifR<0||rmaL<0||rifL<0||tEnd<5) throw new Error("負の値が指定されています");
+  if(tEnd<5) throw new Error("シミュレーション時間が短すぎます（5分以上）");
+
+  const rmaBoluses = getBoluses("rmaBolusList", "rma-b-t", "rma-b-mg");
+  const rifBoluses = getBoluses("rifBolusList", "rif-b-t", "rif-b-mg");
+  const rmaRates = getInfChanges("rmaStart", "rmaRate", "rmaInfChangeList", "rma-c-t", "rma-c-r");
+  const rifRates = getInfChanges("rifStart", "rifRate", "rifInfChangeList", "rif-c-t", "rif-c-r");
 
   const rp=rifParams(age,height,weight,sex);
   const V1r=rp.V1r,V2r=rp.V2r,V3r=rp.V3r,CLR=rp.CL,Q2r=rp.Q2,Q3r=rp.Q3;
@@ -257,14 +333,6 @@ function simulate(){
   // A[5..7]: remifentanil central, V2, V3 mass (µg)
   const A=[0,0,0,0,0,0,0,0];
 
-  // Bolus (静注):
-  A[0]+=rmaL;        // mg
-  A[5]+=rifL*1000;   // mg -> µg
-
-  // Infusion rates:
-  const rmaRate0 = rmaR/60;          // mg/min
-  const rifRate0 = (rifR*1000)/60;   // µg/min
-
   function deriv(s, rRate, fRate){
     const CR = s[5]/V1r; // µg/L == ng/mL
     const INH = CR>0 ? Math.pow(CR,GAM)/(Math.pow(CR,GAM)+Math.pow(IC50,GAM)) : 0;
@@ -282,9 +350,20 @@ function simulate(){
 
   const rows=[];
   const LBASE = Math.log(PD.BASEB / (100 - PD.BASEB));
+  let bRmaIdx = 0, bRifIdx = 0;
 
   for(let i=0;i<=n;i++){
     const t=i*dt;
+
+    // Apply boluses for this time step
+    while(bRmaIdx < rmaBoluses.length && t >= rmaBoluses[bRmaIdx].t - 1e-6){
+      A[0] += rmaBoluses[bRmaIdx].dose; // mg
+      bRmaIdx++;
+    }
+    while(bRifIdx < rifBoluses.length && t >= rifBoluses[bRifIdx].t - 1e-6){
+      A[5] += rifBoluses[bRifIdx].dose * 1000; // mg -> µg
+      bRifIdx++;
+    }
 
     // Concentrations in clinical units:
     const CP = A[0]/V1;                     // mg/L == µg/mL
@@ -292,32 +371,38 @@ function simulate(){
     const CRr = A[5]/V1r;                   // µg/L == ng/mL
     const INH = CRr>0 ? Math.pow(CRr,GAM)/(Math.pow(CRr,GAM)+Math.pow(IC50,GAM)) : 0;
 
-    // Pharmacodynamics (Vellinga 2025 D791 refit):
+    // Pharmacodynamics (Vellinga 2025 Table 1 & Table 2):
     const CAM = Math.pow(CP/PD.EC50M, PD.GAMMAM);
     const CBM = CM/PD.EC50MM;
     const CCM = CRr/PD.EC50MR;
     const DRUGM = PD.EMAXM*(CAM/(1+CAM+CBM))*(1+CCM);
 
-    // Ordinal categorical MOAA/S expectation (0 to 5):
-    const L5 = PD.BASE4 - DRUGM;
-    const L4 = L5 + Math.exp(PD.BASE3);
-    const L3 = L4 + Math.exp(PD.BASE2);
-    const L2 = L3 + Math.exp(PD.BASE1);
-    const L1 = L2 + Math.exp(PD.BASE0);
-    const MOAAS = expit(L1) + expit(L2) + expit(L3) + expit(L4) + expit(L5);
+    // Ordinal categorical MOAA/S expectation (0 to 5)
+    const p0 = expit(PD.A0 + DRUGM);
+    const p1 = expit(PD.A1 + DRUGM);
+    const p2 = expit(PD.A2 + DRUGM);
+    const p3 = expit(PD.A3 + DRUGM);
+    const p4 = expit(PD.A4 + DRUGM);
+    const MOAAS = Math.max(0, Math.min(5, 5 - (p0 + p1 + p2 + p3 + p4)));
 
     // BIS calculation:
     const CA = CP/PD.EC50B, CB = CM/PD.EC50MB, CC = CRr/PD.EC50RB;
     const DRUGB = PD.EMAXB*(CA+CC)/(1+CA+CB+CC);
     const BIS = Math.max(0, Math.min(100, 100*expit(LBASE - DRUGB)));
 
+    // TOL (Tolerance to Laryngoscopy, %) & TOTS (Tolerance to Tetanic Stimulation, %):
+    const c50_tol = PD.EC50T * (CRr > 0 ? (PD.EC50Tr / (CRr + PD.EC50Tr)) : 1.0);
+    const TOL = Math.max(0, Math.min(100, 100 * CP / (CP + c50_tol)));
+    const c50_tots = PD.EC50TO * (CRr > 0 ? (PD.EC50TOr / (CRr + PD.EC50TOr)) : 1.0);
+    const TOTS = Math.max(0, Math.min(100, 100 * CP / (CP + c50_tots)));
+
     if(i%Math.max(1,Math.round(n/240))===0 || i===n){
-      rows.push({t,CP,CM,CRr,INH,MOAAS,BIS});
+      rows.push({t,CP,CM,CRr,INH,MOAAS,BIS,TOL,TOTS});
     }
 
     if(i<n){
-      const rRate = (t>=rmaS && (rmaSt===0||t<rmaSt)) ? rmaRate0 : 0;
-      const fRate = (t>=rifS && (rifSt===0||t<rifSt)) ? rifRate0 : 0;
+      const rRate = getRateAt(t, rmaRates)/60;          // mg/min
+      const fRate = (getRateAt(t, rifRates)*1000)/60;   // µg/min
 
       // RK4 step
       const k1 = deriv(A, rRate, fRate);
@@ -337,17 +422,83 @@ function simulate(){
       }
     }
   }
-  return { rows, pk:{V1,V2,V3,CL,Q2,Q3, V1r,V2r,V3r,CLR,Q2r,Q3r, INHmax: Math.max(...rows.map(r=>r.INH)) } };
+
+  return {
+    rows,
+    pk: {
+      V1,V2,V3,CL,Q2,Q3,
+      V1r,V2r,V3r,CLR,Q2r,Q3r,
+      INHmax: Math.max(...rows.map(r=>r.INH)),
+      TOLmax: Math.max(...rows.map(r=>r.TOL)),
+      TOTSmax: Math.max(...rows.map(r=>r.TOTS))
+    }
+  };
 }
 
-// ===================== Render =====================
-let lastRows=null, lastPK=null;
-function fmt(x,d=2){ return (x==null? "–" : x.toFixed(d)); }
-function showErr(msg){ const e=document.getElementById("errBox"); e.style.display="block"; e.textContent=msg; }
-function hideErr(){ document.getElementById("errBox").style.display="none"; }
+// ===================== Dynamic Rows & Hints =====================
+function curWeight(){ const w=parseFloat(document.getElementById("weight").value); return (w>0)?w:70; }
+
+function updateDoseHint(input, hintEl, type){
+  if(!hintEl) return;
+  const w = curWeight();
+  const v = parseFloat(input.value);
+  const dose = (!isNaN(v) && v >= 0) ? v : 0;
+  if(type === "rma-bolus") hintEl.textContent = `≒ ${(dose/w).toFixed(2)} mg/kg`;
+  else if(type === "rma-rate") hintEl.textContent = `≒ ${(dose/w).toFixed(2)} mg/kg/h`;
+  else if(type === "rif-bolus") hintEl.textContent = `≒ ${(dose*1000/w).toFixed(1)} µg/kg`;
+  else if(type === "rif-rate") hintEl.textContent = `≒ ${(dose*1000/w/60).toFixed(2)} µg/kg/min (${(dose*1000/w).toFixed(1)} µg/kg/h)`;
+}
+
+function addRmaBolusRow(t=0, mg=0){
+  const div=document.createElement("div"); div.className="dose-item";
+  div.innerHTML=`<div><label>時間（分）</label><input type="number" class="rma-b-t" min="0" step="1" value="${t}"></div>`+
+    `<div><label>投与量（mg）</label><input type="number" class="rma-b-mg" min="0" step="0.1" value="${mg}"><div class="hint rma-b-hint"></div></div>`+
+    `<button class="btn btn-ghost btn-sm row-del" type="button" title="削除">✕</button>`;
+  const mi=div.querySelector(".rma-b-mg");
+  const upd=()=>updateDoseHint(mi, div.querySelector(".rma-b-hint"), "rma-bolus");
+  mi.oninput=upd; mi.onchange=upd; upd();
+  div.querySelector("button").onclick=()=>{ div.remove(); };
+  document.getElementById("rmaBolusList").appendChild(div);
+}
+
+function addRmaInfChangeRow(t=0, rate=0){
+  const div=document.createElement("div"); div.className="dose-item";
+  div.innerHTML=`<div><label>変更時刻（分）</label><input type="number" class="rma-c-t" min="0" step="1" value="${t}"></div>`+
+    `<div><label>新速度（mg/h）</label><input type="number" class="rma-c-r" min="0" step="0.1" value="${rate}"><div class="hint rma-c-hint"></div></div>`+
+    `<button class="btn btn-ghost btn-sm row-del" type="button" title="削除">✕</button>`;
+  const ri=div.querySelector(".rma-c-r");
+  const upd=()=>updateDoseHint(ri, div.querySelector(".rma-c-hint"), "rma-rate");
+  ri.oninput=upd; ri.onchange=upd; upd();
+  div.querySelector("button").onclick=()=>{ div.remove(); };
+  document.getElementById("rmaInfChangeList").appendChild(div);
+}
+
+function addRifBolusRow(t=0, mg=0){
+  const div=document.createElement("div"); div.className="dose-item";
+  div.innerHTML=`<div><label>時間（分）</label><input type="number" class="rif-b-t" min="0" step="1" value="${t}"></div>`+
+    `<div><label>投与量（mg）</label><input type="number" class="rif-b-mg" min="0" step="0.01" value="${mg}"><div class="hint rif-b-hint"></div></div>`+
+    `<button class="btn btn-ghost btn-sm row-del" type="button" title="削除">✕</button>`;
+  const mi=div.querySelector(".rif-b-mg");
+  const upd=()=>updateDoseHint(mi, div.querySelector(".rif-b-hint"), "rif-bolus");
+  mi.oninput=upd; mi.onchange=upd; upd();
+  div.querySelector("button").onclick=()=>{ div.remove(); };
+  document.getElementById("rifBolusList").appendChild(div);
+}
+
+function addRifInfChangeRow(t=0, rate=0){
+  const div=document.createElement("div"); div.className="dose-item";
+  div.innerHTML=`<div><label>変更時刻（分）</label><input type="number" class="rif-c-t" min="0" step="1" value="${t}"></div>`+
+    `<div><label>新速度（mg/h）</label><input type="number" class="rif-c-r" min="0" step="0.01" value="${rate}"><div class="hint rif-c-hint"></div></div>`+
+    `<button class="btn btn-ghost btn-sm row-del" type="button" title="削除">✕</button>`;
+  const ri=div.querySelector(".rif-c-r");
+  const upd=()=>updateDoseHint(ri, div.querySelector(".rif-c-hint"), "rif-rate");
+  ri.oninput=upd; ri.onchange=upd; upd();
+  div.querySelector("button").onclick=()=>{ div.remove(); };
+  document.getElementById("rifInfChangeList").appendChild(div);
+}
 
 function updateHints(){
-  const w=num("weight",70);
+  const w=curWeight();
   const rmaR=num("rmaRate",70), rifR=num("rifRate",0.42);
   const p=lastPK || rifParams(num("age",50),num("height",170),w,num("sex",1));
   const clr = p.CLR || p.CL;
@@ -355,7 +506,31 @@ function updateHints(){
     `参考: ${fmt(rmaR/w,2)} mg/kg/h → 予想定常 Cp ≈ ${fmt(rmaR/60/RMA.CL,2)} µg/mL`;
   document.getElementById("rifRef").textContent =
     `参考: ${fmt((rifR*1000)/w/60,2)} µg/kg/min (${fmt((rifR*1000)/w,1)} µg/kg/h) → 予想定常 Cr ≈ ${fmt((rifR*1000)/60/clr,1)} ng/mL`;
+
+  // Update dynamic row hints
+  document.querySelectorAll("#rmaBolusList .dose-item").forEach(d => {
+    const mi = d.querySelector(".rma-b-mg");
+    if(mi) updateDoseHint(mi, d.querySelector(".rma-b-hint"), "rma-bolus");
+  });
+  document.querySelectorAll("#rmaInfChangeList .dose-item").forEach(d => {
+    const ri = d.querySelector(".rma-c-r");
+    if(ri) updateDoseHint(ri, d.querySelector(".rma-c-hint"), "rma-rate");
+  });
+  document.querySelectorAll("#rifBolusList .dose-item").forEach(d => {
+    const mi = d.querySelector(".rif-b-mg");
+    if(mi) updateDoseHint(mi, d.querySelector(".rif-b-hint"), "rif-bolus");
+  });
+  document.querySelectorAll("#rifInfChangeList .dose-item").forEach(d => {
+    const ri = d.querySelector(".rif-c-r");
+    if(ri) updateDoseHint(ri, d.querySelector(".rif-c-hint"), "rif-rate");
+  });
 }
+
+// ===================== Render =====================
+let lastRows=null, lastPK=null;
+function fmt(x,d=2){ return (x==null? "–" : x.toFixed(d)); }
+function showErr(msg){ const e=document.getElementById("errBox"); e.style.display="block"; e.textContent=msg; }
+function hideErr(){ const e=document.getElementById("errBox"); if(e) e.style.display="none"; }
 
 function render(res){
   hideErr();
@@ -372,7 +547,9 @@ function render(res){
     ["レミフェンタニル CL",fmt(p.CLR,2),"L/min"],
     ["レミフェンタニル Q2R",fmt(p.Q2r,2),"L/min"],
     ["レミフェンタニル Q3R",fmt(p.Q3r,3),"L/min"],
-    ["最大INH",fmt(p.INHmax*100,1),"%"]
+    ["最大INH (代謝阻害)",fmt(p.INHmax*100,1),"%"],
+    ["最大TOL (喉頭展開耐性)",fmt(p.TOLmax,0),"%"],
+    ["最大TOTS (強直刺激耐性)",fmt(p.TOTSmax,0),"%"]
   ];
   document.getElementById("pkStats").innerHTML=stats.map(s=>
     `<div class="stat"><div class="k">${s[0]}</div><div class="v">${s[1]}<span class="u"> ${s[2]}</span></div></div>`).join("");
@@ -384,7 +561,7 @@ function render(res){
 function renderTable(){
   const rows=lastRows; const body=document.getElementById("dataRows");
   body.innerHTML=rows.map(r=>
-    `<tr><td>${fmt(r.t,1)}</td><td>${fmt(r.CP,2)}</td><td>${fmt(r.CM,2)}</td><td>${fmt(r.CRr,2)}</td><td>${fmt(r.INH*100,1)}</td><td>${fmt(r.MOAAS,2)}</td><td>${fmt(r.BIS,0)}</td></tr>`
+    `<tr><td>${fmt(r.t,1)}</td><td>${fmt(r.CP,2)}</td><td>${fmt(r.CM,2)}</td><td>${fmt(r.CRr,2)}</td><td>${fmt(r.INH*100,1)}</td><td>${fmt(r.MOAAS,2)}</td><td>${fmt(r.BIS,0)}</td><td>${fmt(r.TOL,0)}</td><td>${fmt(r.TOTS,0)}</td></tr>`
   ).join("");
 }
 
@@ -422,7 +599,7 @@ function setupChart(){
 
   let dragging = false, moved = 0, dragX = -1;
 
-  function render(){
+  function renderChart(){
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, W, H);
     ctx.font = '11px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif';
@@ -500,6 +677,8 @@ function setupChart(){
     drawLine('CRr', '#e11d48', 2.0, null, []);
     drawLine('MOAAS', '#f59e0b', 1.8, 5, [4, 3]);
     drawLine('BIS', '#64748b', 1.8, 100, []);
+    drawLine('TOL', '#0d9488', 1.6, 100, [2, 2]);
+    drawLine('TOTS', '#0284c7', 1.6, 100, [6, 2]);
 
     ctx.restore();
 
@@ -513,7 +692,7 @@ function setupChart(){
   }
 
   function hover(e){
-    const sc = render();
+    const sc = renderChart();
     const r = cv.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
     if(mx < sc.padL || mx > W - sc.padR || my < sc.padT || my > H - padB) return;
     const t = clamp(sc.invT(mx), 0, tFull);
@@ -529,7 +708,7 @@ function setupChart(){
     ctx.fillStyle = '#7c3aed'; ctx.beginPath(); ctx.arc(x, Y(row.CM), 3.5, 0, 7); ctx.fill();
     ctx.fillStyle = '#e11d48'; ctx.beginPath(); ctx.arc(x, Y(row.CRr), 3.5, 0, 7); ctx.fill();
 
-    const label = `t=${row.t.toFixed(1)}分 | Cp=${row.CP.toFixed(2)} | Cm=${row.CM.toFixed(2)} | Cr=${row.CRr.toFixed(2)} | MOAA/S=${row.MOAAS.toFixed(2)} | BIS=${row.BIS.toFixed(0)} | INH=${(row.INH*100).toFixed(0)}%`;
+    const label = `t=${row.t.toFixed(1)}分 | Cp=${row.CP.toFixed(2)} | Cr=${row.CRr.toFixed(2)} | MOAA/S=${row.MOAAS.toFixed(2)} | BIS=${row.BIS.toFixed(0)} | TOL=${row.TOL.toFixed(0)}% | TOTS=${row.TOTS.toFixed(0)}%`;
     ctx.font = '11.5px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif';
     const tw = ctx.measureText(label).width + 16;
     let bx = x + 10;
@@ -559,40 +738,46 @@ function setupChart(){
       chartView.c0 = 0;
       chartView.c1 = Math.min(cFull * 2, Math.max(0.2, chartView.c1 * factor));
     }
-    render();
+    renderChart();
   };
 
   const resetView = () => {
     chartView.t0 = 0; chartView.t1 = tFull;
     chartView.c0 = 0; chartView.c1 = cFull;
-    render();
+    renderChart();
   };
 
   // Wheel zoom
   cv.onwheel = e => {
     e.preventDefault();
-    const r = cv.getBoundingClientRect(), mx = e.clientX - r.left;
-    const factor = e.deltaY < 0 ? 0.82 : 1 / 0.82;
+    const r = cv.getBoundingClientRect();
+    const mx = e.clientX - r.left;
+    if(mx < padL || mx > W - padR) return;
     if(e.shiftKey){
-      const tc = clamp(chartView.t0 + (mx - padL) / pw * (chartView.t1 - chartView.t0), 0, tFull);
+      const factor = e.deltaY < 0 ? 0.8 : 1.25;
+      const tc = clamp(invT(mx), 0, tFull);
       const span = (chartView.t1 - chartView.t0) * factor;
-      if(span < MIN_XSPAN) return;
+      if(span < MIN_XSPAN && span < tFull - 1e-6) return;
       if(span >= tFull - 1e-6){ chartView.t0 = 0; chartView.t1 = tFull; }
       else {
-        chartView.t0 = clamp(tc - (tc - chartView.t0) * factor, 0, Math.max(0, tFull - span));
+        const f = (tc - chartView.t0) / (chartView.t1 - chartView.t0);
+        chartView.t0 = clamp(tc - f * span, 0, Math.max(0, tFull - span));
         chartView.t1 = chartView.t0 + Math.min(span, tFull);
       }
     } else {
+      const factor = e.deltaY < 0 ? 0.82 : 1.22;
       chartView.c0 = 0;
-      chartView.c1 = Math.min(cFull * 2, Math.max(0.2, chartView.c1 * factor));
+      chartView.c1 = Math.min(cFull * 2.5, Math.max(0.2, chartView.c1 * factor));
     }
-    render();
+    renderChart();
   };
 
-  // Mouse pan
+  // Drag pan
   cv.onmousedown = e => {
-    dragging = true; moved = 0;
-    const r = cv.getBoundingClientRect(); dragX = e.clientX - r.left;
+    if(e.button !== 0) return;
+    const r = cv.getBoundingClientRect(), mx = e.clientX - r.left;
+    if(mx < padL || mx > W - padR) return;
+    dragging = true; moved = 0; dragX = mx;
     cv.style.cursor = 'grabbing';
   };
   const mmHandler = e => {
@@ -604,7 +789,7 @@ function setupChart(){
     const span = chartView.t1 - chartView.t0;
     chartView.t0 = clamp(chartView.t0 - dt, 0, Math.max(0, tFull - span));
     chartView.t1 = chartView.t0 + span;
-    render();
+    renderChart();
   };
   const muHandler = e => {
     if(!dragging) return;
@@ -614,7 +799,7 @@ function setupChart(){
   window.addEventListener('mousemove', mmHandler);
   window.addEventListener('mouseup', muHandler);
   cv.onmousemove = e => { if(!dragging) hover(e); };
-  cv.onmouseleave = () => { if(!dragging) render(); };
+  cv.onmouseleave = () => { if(!dragging) renderChart(); };
 
   // Touch handlers
   let touches = null;
@@ -637,7 +822,7 @@ function setupChart(){
       const span = touches.t1 - touches.t0;
       chartView.t0 = clamp(chartView.t0 - dt, 0, Math.max(0, tFull - span));
       chartView.t1 = chartView.t0 + span;
-      render();
+      renderChart();
     } else if(touches.mode === 'pinch' && e.touches.length >= 2){
       const d1 = tDist(e.touches);
       const scale = touches.d0 / Math.max(1, d1);
@@ -654,7 +839,7 @@ function setupChart(){
         chartView.c0 = 0;
         chartView.c1 = Math.min(cFull * 2, Math.max(0.2, touches.c1 * scale));
       }
-      render();
+      renderChart();
     }
   };
   cv.addEventListener('touchstart', touchstartH, { passive:true });
@@ -693,7 +878,7 @@ function setupChart(){
     chartView.t0 = 0; chartView.t1 = tFull;
     chartView.c0 = 0; chartView.c1 = cFull;
   }
-  render();
+  renderChart();
 }
 
 function drawChart(){
@@ -706,6 +891,7 @@ function run(){
   try{ const res=simulate(); render(res); }
   catch(e){ showErr(e.message); }
 }
+
 document.getElementById("calc").addEventListener("click",run);
 document.getElementById("reset").addEventListener("click",()=>{
   document.getElementById("age").value="50";
@@ -714,12 +900,12 @@ document.getElementById("reset").addEventListener("click",()=>{
   document.getElementById("sex").value="1";
   document.getElementById("rmaRate").value="70";
   document.getElementById("rmaStart").value="0";
-  document.getElementById("rmaLoad").value="0";
-  document.getElementById("rmaStop").value="0";
+  document.getElementById("rmaBolusList").innerHTML="";
+  document.getElementById("rmaInfChangeList").innerHTML="";
   document.getElementById("rifRate").value="0.42";
   document.getElementById("rifStart").value="0";
-  document.getElementById("rifLoad").value="0";
-  document.getElementById("rifStop").value="0";
+  document.getElementById("rifBolusList").innerHTML="";
+  document.getElementById("rifInfChangeList").innerHTML="";
   document.getElementById("tEnd").value="120";
   const tc = document.getElementById("tableCard");
   if (tc) {
@@ -728,12 +914,20 @@ document.getElementById("reset").addEventListener("click",()=>{
     if (chev) chev.textContent = "開く ▾";
   }
   hideErr();
+  updateHints();
   run();
 });
+
+// Dynamic rows button listeners
+document.getElementById("addRmaBolus").addEventListener("click", () => addRmaBolusRow(0, 0));
+document.getElementById("addRmaInfChange").addEventListener("click", () => addRmaInfChangeRow(0, 0));
+document.getElementById("addRifBolus").addEventListener("click", () => addRifBolusRow(0, 0));
+document.getElementById("addRifInfChange").addEventListener("click", () => addRifInfChangeRow(0, 0));
+
 // Collapsible table card toggle
 document.querySelectorAll(".card-collapsible .card-h").forEach(h => {
   h.addEventListener("click", e => {
-    if (e.target.closest("button")) return; // 除外: CSV出力ボタン
+    if (e.target.closest("button")) return;
     const card = h.closest(".card-collapsible");
     card.classList.toggle("collapsed");
     h.querySelector(".chev").textContent = card.classList.contains("collapsed") ? "開く ▾" : "閉じる ▴";
@@ -742,8 +936,8 @@ document.querySelectorAll(".card-collapsible .card-h").forEach(h => {
 
 document.getElementById("csv").addEventListener("click",()=>{
   if(!lastRows) return;
-  const head="time_min,remimazolam_Cp_ug_per_mL,metabolite_Cm_ug_per_mL,remifentanil_Cr_ng_per_mL,INH_pct,MOAAS,BIS";
-  const lines=lastRows.map(r=>[r.t.toFixed(2),r.CP.toFixed(3),r.CM.toFixed(3),r.CRr.toFixed(3),(r.INH*100).toFixed(1),r.MOAAS.toFixed(2),r.BIS.toFixed(1)].join(","));
+  const head="time_min,remimazolam_Cp_ug_per_mL,metabolite_Cm_ug_per_mL,remifentanil_Cr_ng_per_mL,INH_pct,MOAAS,BIS,TOL_pct,TOTS_pct";
+  const lines=lastRows.map(r=>[r.t.toFixed(2),r.CP.toFixed(3),r.CM.toFixed(3),r.CRr.toFixed(3),(r.INH*100).toFixed(1),r.MOAAS.toFixed(2),r.BIS.toFixed(1),r.TOL.toFixed(1),r.TOTS.toFixed(1)].join(","));
   const blob=new Blob([head+"\n"+lines.join("\n")],{type:"text/csv"});
   const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="vellinga_sim.csv"; a.click(); URL.revokeObjectURL(a.href);
 });
