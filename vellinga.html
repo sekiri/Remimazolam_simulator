@@ -52,6 +52,12 @@
   th{color:var(--muted);font-weight:600;background:var(--bg)}
   .footer-src{font-size:11px;color:var(--muted);line-height:1.6}
   .footer-src b{color:var(--ink)}
+  .card-collapsible .card-h{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;}
+  .card-collapsible .card-h .chev{margin-left:auto;font-size:12px;color:var(--muted);background:#f1f5f9;border:1px solid var(--line);border-radius:6px;padding:2px 8px;transition:.15s;}
+  .card-collapsible .card-h:hover .chev{background:#e8edf5;color:var(--ink);}
+  .card-collapsible .card-body{margin-top:10px;}
+  .card-collapsible.collapsed .card-body{display:none;}
+  .card-collapsible.collapsed .card-h{margin-bottom:0;}
 </style>
 </head>
 <body>
@@ -141,14 +147,13 @@
         </div>
       </div>
 
-      <div class="card" id="tableCard" style="display:none">
-        <h2>時刻別数値</h2>
-        <table id="dataTable">
-          <thead><tr><th>時間(分)</th><th>レミマゾラム Cp(µg/mL)</th><th>代謝物 Cm(µg/mL)</th><th>レミフェンタニル Cr(ng/mL)</th><th>INH(%)</th><th>MOAA/S</th><th>BIS</th></tr></thead>
-          <tbody id="dataRows"></tbody>
-        </table>
-        <div class="actions">
-          <button class="btn btn-ghost btn-sm" id="csv" type="button">CSV出力</button>
+      <div class="card card-collapsible collapsed" id="tableCard" style="display:none">
+        <h2 class="card-h">時刻別数値 <button class="btn btn-ghost btn-sm" id="csv" type="button">CSV出力</button><span class="chev">開く ▾</span></h2>
+        <div class="card-body">
+          <table id="dataTable">
+            <thead><tr><th>時間(分)</th><th>レミマゾラム Cp(µg/mL)</th><th>代謝物 Cm(µg/mL)</th><th>レミフェンタニル Cr(ng/mL)</th><th>INH(%)</th><th>MOAA/S</th><th>BIS</th></tr></thead>
+            <tbody id="dataRows"></tbody>
+          </table>
         </div>
       </div>
 
@@ -476,9 +481,25 @@ document.getElementById("reset").addEventListener("click",()=>{
   document.getElementById("rifLoad").value="0";
   document.getElementById("rifStop").value="0";
   document.getElementById("tEnd").value="120";
+  const tc = document.getElementById("tableCard");
+  if (tc) {
+    tc.classList.add("collapsed");
+    const chev = tc.querySelector(".chev");
+    if (chev) chev.textContent = "開く ▾";
+  }
   hideErr();
   run();
 });
+// Collapsible table card toggle
+document.querySelectorAll(".card-collapsible .card-h").forEach(h => {
+  h.addEventListener("click", e => {
+    if (e.target.closest("button")) return; // 除外: CSV出力ボタン
+    const card = h.closest(".card-collapsible");
+    card.classList.toggle("collapsed");
+    h.querySelector(".chev").textContent = card.classList.contains("collapsed") ? "開く ▾" : "閉じる ▴";
+  });
+});
+
 document.getElementById("csv").addEventListener("click",()=>{
   if(!lastRows) return;
   const head="time_min,remimazolam_Cp_ug_per_mL,metabolite_Cm_ug_per_mL,remifentanil_Cr_ng_per_mL,INH_pct,MOAAS,BIS";
