@@ -120,9 +120,16 @@ RK4（Runge-Kutta 4 次）法、dt = 0.05 min。
 
 ```
 remimazolam-tci-simulator/
-├── index.html      # 本体（HTML + CSS + JS、すべてこれ 1 ファイル）
-└── README.md       # このファイル
+├── index.html      # 単剤モデル本体（Masui 2022 PK + Chon 2024 PD）
+├── vellinga.html   # レミフェンタニル併用モデル（Vellinga 2025 PK/PD + Eleveld 2017）
+└── README.md       # 本ドキュメント
 ```
+
+### レミフェンタニル併用モデル（vellinga.html）について
+`index.html` のヘッダーから遷移可能。
+- **背景**: 臨床現場の実態に即し、レミマゾラム（アネレム）およびレミフェンタニル（アルチバ）の両薬を持続投与（mg/h）＋静注（mg）でシミュレーション。
+- **相互作用（急性耐性）**: レミフェンタニルがレミマゾラム代謝物 CNS7054 の分解を競合阻害（$INH$）し、代謝物蓄積を引き起こす機構を再現。
+- **鎮静深度・脳波予測**: Vellinga 2025 補遺 D791 の順位カテゴリカルモデルによる MOAA/S（0〜5）および BIS 予測を統合。
 
 ---
 
